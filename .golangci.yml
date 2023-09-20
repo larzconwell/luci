@@ -17,7 +17,6 @@ linters:
     - durationcheck
     - errname
     - errorlint
-    - execinquery
     - exhaustive
     - exportloopref
     - forcetypeassert
@@ -38,8 +37,6 @@ linters:
     - paralleltest
     - prealloc
     - revive
-    - rowserrcheck
-    - sqlclosecheck
     - testableexamples
     - tparallel
     - unconvert
