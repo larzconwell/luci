@@ -16,8 +16,9 @@ func TestDefaultConfig(t *testing.T) {
 		Address:           ":http",
 		ReadHeaderTimeout: time.Second,
 		ShutdownTimeout:   5 * time.Second,
-		Logger:            slog.Default(),
+		Logger:            DefaultConfig.Logger,
 	}, DefaultConfig)
+	assert.NotNil(t, DefaultConfig.Logger)
 }
 
 func TestBuildConfig(t *testing.T) {

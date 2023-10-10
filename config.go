@@ -10,7 +10,7 @@ var (
 		Address:           ":http",
 		ReadHeaderTimeout: time.Second,
 		ShutdownTimeout:   5 * time.Second,
-		Logger:            slog.Default(),
+		Logger:            slog.Default().WithGroup("server"),
 	}
 )
 
