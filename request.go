@@ -6,7 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func RequestParams(req *http.Request) map[string]string {
+func RequestVars(req *http.Request) map[string]string {
 	urlParams := chi.RouteContext(req.Context()).URLParams
 	params := make(map[string]string, len(urlParams.Keys))
 
@@ -17,6 +17,6 @@ func RequestParams(req *http.Request) map[string]string {
 	return params
 }
 
-func RequestParam(req *http.Request, key string) string {
-	return RequestParams(req)[key]
+func RequestVar(req *http.Request, key string) string {
+	return RequestVars(req)[key]
 }

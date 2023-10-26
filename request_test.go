@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRequestParams(t *testing.T) {
+func TestRequestVars(t *testing.T) {
 	t.Parallel()
 
 	var ctx chi.Context
@@ -23,10 +23,10 @@ func TestRequestParams(t *testing.T) {
 	assert.Equal(t, map[string]string{
 		"key_1": "value",
 		"key_2": "value",
-	}, RequestParams(request))
+	}, RequestVars(request))
 }
 
-func TestRequestParam(t *testing.T) {
+func TestRequestVar(t *testing.T) {
 	t.Parallel()
 
 	var ctx chi.Context
@@ -35,6 +35,6 @@ func TestRequestParam(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/status", nil)
 	request = request.WithContext(context.WithValue(request.Context(), chi.RouteCtxKey, &ctx))
 
-	assert.Equal(t, "value", RequestParam(request, "key"))
-	assert.Empty(t, RequestParam(request, "nonexistent_key"))
+	assert.Equal(t, "value", RequestVar(request, "key"))
+	assert.Empty(t, RequestVar(request, "nonexistent_key"))
 }
