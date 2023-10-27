@@ -43,7 +43,11 @@ func NewServer(config Config, app Application) *Server {
 			router.Use(middleware)
 		}
 
-		router.MethodFunc(route.Method, route.Pattern, route.HandlerFunc)
+		if route.Method == "" {
+			router.HandleFunc(route.Pattern, route.HandlerFunc)
+		} else {
+			router.MethodFunc(route.Method, route.Pattern, route.HandlerFunc)
+		}
 	}
 
 	server := &http.Server{

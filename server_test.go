@@ -63,17 +63,26 @@ func TestNewServer(t *testing.T) {
 	t.Run("adds routes", func(t *testing.T) {
 		t.Parallel()
 
+		baseMiddlewareCount := 2
+
 		var app TestApplication
 		app.On("Middlewares").Return([]Middleware{
-			middleware.WithValue("middleware_1", true),
+			middleware.WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+1), true),
 		})
 		app.On("Routes").Return(map[string]Route{
+			"all_status": {
+				Pattern: "/status",
+				Middlewares: []Middleware{
+					middleware.WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+2), true),
+				},
+				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
+			},
 			"get_status": {
 				Method:  http.MethodGet,
 				Pattern: "/status",
 				Middlewares: []Middleware{
-					middleware.WithValue("middleware_2", true),
-					middleware.WithValue("middleware_3", true),
+					middleware.WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+2), true),
+					middleware.WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+3), true),
 				},
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
 			},
@@ -81,7 +90,9 @@ func TestNewServer(t *testing.T) {
 				Method:  http.MethodPost,
 				Pattern: "/status",
 				Middlewares: []Middleware{
-					middleware.WithValue("middleware_2", true),
+					middleware.WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+2), true),
+					middleware.WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+3), true),
+					middleware.WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+4), true),
 				},
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
 			},
@@ -94,15 +105,19 @@ func TestNewServer(t *testing.T) {
 		app.AssertExpectations(t)
 
 		var count int
+		var methods []string
 		err := chi.Walk(mux, func(method string, pattern string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+			methods = append(methods, method)
 			assert.Equal(t, "/status", pattern)
 			assert.NotNil(t, handler)
-			assert.Contains(t, []string{http.MethodGet, http.MethodPost}, method)
 
-			if method == http.MethodGet {
-				assert.Len(t, middlewares, 5) // The server adds middleware
-			} else {
-				assert.Len(t, middlewares, 4) // The server adds middleware
+			switch method {
+			case http.MethodGet:
+				assert.Len(t, middlewares, baseMiddlewareCount+3)
+			case http.MethodPost:
+				assert.Len(t, middlewares, baseMiddlewareCount+4)
+			default:
+				assert.Len(t, middlewares, baseMiddlewareCount+2)
 			}
 
 			count++
@@ -110,8 +125,12 @@ func TestNewServer(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
+		assert.Greater(t, count, 2)
+		assert.Len(t, methods, count)
+		assert.Contains(t, methods, http.MethodGet)
+		assert.Contains(t, methods, http.MethodPost)
+
 		app.AssertExpectations(t)
-		assert.Equal(t, 2, count)
 	})
 
 	t.Run("adds the current route middleware", func(t *testing.T) {
