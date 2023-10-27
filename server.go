@@ -28,8 +28,14 @@ func NewServer(config Config, app Application) *Server {
 	mux.MethodNotAllowed(errorRespond(app.Error, http.StatusMethodNotAllowed, ErrMethodNotAllowed))
 	mux.NotFound(errorRespond(app.Error, http.StatusNotFound, ErrNotFound))
 
-	for name, route := range app.Routes() {
-		route.Name = name
+	for _, route := range app.Routes() {
+		if route.Name == "" {
+			panic("luci: route must have a name")
+		}
+		if route.HandlerFunc == nil {
+			panic("luci: route must have a handler")
+		}
+
 		router := mux.With(
 			middleware.WithValue(routeContextKey{}, route),
 			withRequestVars,

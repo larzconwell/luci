@@ -5,7 +5,7 @@ import (
 )
 
 type Application interface {
-	Routes() map[string]Route
+	Routes() []Route
 	Middlewares() []Middleware
 	Error(http.ResponseWriter, *http.Request, int, error)
 	Respond(http.ResponseWriter, *http.Request, any)

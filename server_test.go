@@ -19,8 +19,8 @@ type TestApplication struct {
 	mock.Mock
 }
 
-func (ta *TestApplication) Routes() map[string]Route {
-	routes, _ := ta.MethodCalled("Routes").Get(0).(map[string]Route)
+func (ta *TestApplication) Routes() []Route {
+	routes, _ := ta.MethodCalled("Routes").Get(0).([]Route)
 	return routes
 }
 
@@ -44,7 +44,7 @@ func TestNewServer(t *testing.T) {
 		t.Parallel()
 
 		var app TestApplication
-		app.On("Routes").Return(map[string]Route{})
+		app.On("Routes").Return(nil)
 
 		server := NewServer(DefaultConfig, &app)
 
@@ -69,15 +69,17 @@ func TestNewServer(t *testing.T) {
 		app.On("Middlewares").Return([]Middleware{
 			middleware.WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+1), true),
 		})
-		app.On("Routes").Return(map[string]Route{
-			"all_status": {
+		app.On("Routes").Return([]Route{
+			{
+				Name:    "all_status",
 				Pattern: "/status",
 				Middlewares: []Middleware{
 					middleware.WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+2), true),
 				},
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
 			},
-			"get_status": {
+			{
+				Name:    "get_status",
 				Method:  http.MethodGet,
 				Pattern: "/status",
 				Middlewares: []Middleware{
@@ -86,7 +88,8 @@ func TestNewServer(t *testing.T) {
 				},
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
 			},
-			"post_status": {
+			{
+				Name:    "post_status",
 				Method:  http.MethodPost,
 				Pattern: "/status",
 				Middlewares: []Middleware{
@@ -129,6 +132,48 @@ func TestNewServer(t *testing.T) {
 		assert.Len(t, methods, count)
 		assert.Contains(t, methods, http.MethodGet)
 		assert.Contains(t, methods, http.MethodPost)
+	})
+
+	t.Run("panics if route has no name", func(t *testing.T) {
+		t.Parallel()
+
+		var app TestApplication
+		app.On("Routes").Return([]Route{
+			{
+				Method:  http.MethodGet,
+				Pattern: "/status",
+				Middlewares: []Middleware{
+					middleware.WithValue("middleware", true),
+				},
+				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
+			},
+		})
+
+		assert.Panics(t, func() {
+			NewServer(DefaultConfig, &app)
+		})
+
+		app.AssertExpectations(t)
+	})
+
+	t.Run("panics if route has no handler", func(t *testing.T) {
+		t.Parallel()
+
+		var app TestApplication
+		app.On("Routes").Return([]Route{
+			{
+				Name:    "status",
+				Method:  http.MethodGet,
+				Pattern: "/status",
+				Middlewares: []Middleware{
+					middleware.WithValue("middleware", true),
+				},
+			},
+		})
+
+		assert.Panics(t, func() {
+			NewServer(DefaultConfig, &app)
+		})
 
 		app.AssertExpectations(t)
 	})
@@ -140,9 +185,10 @@ func TestNewServer(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, "/status", nil)
 
 		var app TestApplication
-		app.On("Middlewares").Return([]Middleware{})
-		app.On("Routes").Return(map[string]Route{
-			"status": {
+		app.On("Middlewares").Return(nil)
+		app.On("Routes").Return([]Route{
+			{
+				Name:    "status",
 				Method:  http.MethodGet,
 				Pattern: "/status",
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
@@ -173,9 +219,10 @@ func TestNewServer(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, "/user/abc123/post/abc123", nil)
 
 		var app TestApplication
-		app.On("Middlewares").Return([]Middleware{})
-		app.On("Routes").Return(map[string]Route{
-			"user_post": {
+		app.On("Middlewares").Return(nil)
+		app.On("Routes").Return([]Route{
+			{
+				Name:    "user_post",
 				Method:  http.MethodGet,
 				Pattern: "/user/{user}/post/{post}",
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
@@ -203,9 +250,10 @@ func TestNewServer(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/status", nil)
 
 		var app TestApplication
-		app.On("Middlewares").Return([]Middleware{})
-		app.On("Routes").Return(map[string]Route{
-			"status": {
+		app.On("Middlewares").Return(nil)
+		app.On("Routes").Return([]Route{
+			{
+				Name:        "status",
 				Method:      http.MethodGet,
 				Pattern:     "/status",
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
@@ -226,9 +274,10 @@ func TestNewServer(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, "/nonexistent", nil)
 
 		var app TestApplication
-		app.On("Middlewares").Return([]Middleware{})
-		app.On("Routes").Return(map[string]Route{
-			"status": {
+		app.On("Middlewares").Return(nil)
+		app.On("Routes").Return([]Route{
+			{
+				Name:        "status",
 				Method:      http.MethodGet,
 				Pattern:     "/status",
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
@@ -250,9 +299,10 @@ func TestServerListenAndServe(t *testing.T) {
 		t.Parallel()
 
 		var app TestApplication
-		app.On("Middlewares").Return([]Middleware{})
-		app.On("Routes").Return(map[string]Route{
-			"status": {
+		app.On("Middlewares").Return(nil)
+		app.On("Routes").Return([]Route{
+			{
+				Name:    "status",
 				Method:  http.MethodGet,
 				Pattern: "/status",
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
@@ -300,9 +350,10 @@ func TestServerListenAndServe(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		var app TestApplication
-		app.On("Middlewares").Return([]Middleware{})
-		app.On("Routes").Return(map[string]Route{
-			"status": {
+		app.On("Middlewares").Return(nil)
+		app.On("Routes").Return([]Route{
+			{
+				Name:    "status",
 				Method:  http.MethodGet,
 				Pattern: "/status",
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
