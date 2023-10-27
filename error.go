@@ -6,9 +6,9 @@ import (
 )
 
 var (
-	ErrMethodNotAllowed = errors.New("method not allowed")
-	ErrNotFound         = errors.New("not found")
-	ErrForcedShutdown   = errors.New("forced server shutdown")
+	ErrMethodNotAllowed = errors.New("luci: method not allowed")
+	ErrNotFound         = errors.New("luci: not found")
+	ErrForcedShutdown   = errors.New("luci: forced server shutdown")
 )
 
 type ErrorHandlerFunc func(http.ResponseWriter, *http.Request, int, error)
