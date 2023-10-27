@@ -58,6 +58,8 @@ func TestNewServer(t *testing.T) {
 			ReadHeaderTimeout: DefaultConfig.ReadHeaderTimeout,
 		}, server.server)
 		assert.NotNil(t, server.server.Handler)
+		assert.NotNil(t, server.routes)
+		assert.NotNil(t, server.started)
 	})
 
 	t.Run("adds routes", func(t *testing.T) {
@@ -132,6 +134,11 @@ func TestNewServer(t *testing.T) {
 		assert.Len(t, methods, count)
 		assert.Contains(t, methods, http.MethodGet)
 		assert.Contains(t, methods, http.MethodPost)
+
+		assert.Len(t, server.routes, 3)
+		assert.Contains(t, server.routes, "all_status")
+		assert.Contains(t, server.routes, "get_status")
+		assert.Contains(t, server.routes, "post_status")
 	})
 
 	t.Run("panics if route has no name", func(t *testing.T) {
@@ -140,11 +147,34 @@ func TestNewServer(t *testing.T) {
 		var app TestApplication
 		app.On("Routes").Return([]Route{
 			{
-				Method:  http.MethodGet,
-				Pattern: "/status",
-				Middlewares: []Middleware{
-					middleware.WithValue("middleware", true),
-				},
+				Method:      http.MethodGet,
+				Pattern:     "/status",
+				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
+			},
+		})
+
+		assert.Panics(t, func() {
+			NewServer(DefaultConfig, &app)
+		})
+
+		app.AssertExpectations(t)
+	})
+
+	t.Run("panics if route names are not unique", func(t *testing.T) {
+		t.Parallel()
+
+		var app TestApplication
+		app.On("Routes").Return([]Route{
+			{
+				Name:        "status",
+				Method:      http.MethodGet,
+				Pattern:     "/status",
+				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
+			},
+			{
+				Name:        "status",
+				Method:      http.MethodPost,
+				Pattern:     "/status",
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
 			},
 		})
@@ -165,9 +195,6 @@ func TestNewServer(t *testing.T) {
 				Name:    "status",
 				Method:  http.MethodGet,
 				Pattern: "/status",
-				Middlewares: []Middleware{
-					middleware.WithValue("middleware", true),
-				},
 			},
 		})
 
@@ -388,4 +415,41 @@ func TestServerListenAndServe(t *testing.T) {
 
 		app.AssertExpectations(t)
 	})
+}
+
+func TestServerRoute(t *testing.T) {
+	t.Parallel()
+
+	var app TestApplication
+	app.On("Middlewares").Return(nil)
+	app.On("Routes").Return([]Route{
+		{
+			Name:        "all_status",
+			Pattern:     "/status",
+			HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
+		},
+		{
+			Name:        "get_status",
+			Method:      http.MethodGet,
+			Pattern:     "/status",
+			HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
+		},
+	})
+
+	server := NewServer(DefaultConfig, &app)
+
+	app.AssertExpectations(t)
+
+	route, ok := server.Route("all_status")
+	assert.True(t, ok)
+	assert.Equal(t, "all_status", route.Name)
+	assert.Empty(t, route.Method)
+
+	route, ok = server.Route("get_status")
+	assert.True(t, ok)
+	assert.Equal(t, "get_status", route.Name)
+	assert.Equal(t, http.MethodGet, route.Method)
+
+	_, ok = server.Route("nonexistent_route")
+	assert.False(t, ok)
 }

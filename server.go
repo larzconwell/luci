@@ -17,6 +17,7 @@ type Server struct {
 	app     Application
 	logger  *slog.Logger
 	server  *http.Server
+	routes  map[string]Route
 	started chan struct{}
 	address string
 }
@@ -28,10 +29,18 @@ func NewServer(config Config, app Application) *Server {
 	mux.MethodNotAllowed(errorRespond(app.Error, http.StatusMethodNotAllowed, ErrMethodNotAllowed))
 	mux.NotFound(errorRespond(app.Error, http.StatusNotFound, ErrNotFound))
 
-	for _, route := range app.Routes() {
+	routes := app.Routes()
+	routesByName := make(map[string]Route, len(routes))
+	for _, route := range routes {
 		if route.Name == "" {
 			panic("luci: route must have a name")
 		}
+
+		_, ok := routesByName[route.Name]
+		if ok {
+			panic("luci: routes must have unique names")
+		}
+
 		if route.HandlerFunc == nil {
 			panic("luci: route must have a handler")
 		}
@@ -54,6 +63,8 @@ func NewServer(config Config, app Application) *Server {
 		} else {
 			router.MethodFunc(route.Method, route.Pattern, route.HandlerFunc)
 		}
+
+		routesByName[route.Name] = route
 	}
 
 	server := &http.Server{
@@ -67,6 +78,7 @@ func NewServer(config Config, app Application) *Server {
 		app:     app,
 		logger:  config.Logger,
 		server:  server,
+		routes:  routesByName,
 		started: make(chan struct{}),
 	}
 }
@@ -123,4 +135,9 @@ func (server *Server) ListenAndServe(ctx context.Context) error {
 func (server *Server) Address() string {
 	<-server.started
 	return server.address
+}
+
+func (server *Server) Route(name string) (Route, bool) {
+	route, ok := server.routes[name]
+	return route, ok
 }
