@@ -100,9 +100,9 @@ func TestNewServer(t *testing.T) {
 			assert.Contains(t, []string{http.MethodGet, http.MethodPost}, method)
 
 			if method == http.MethodGet {
-				assert.Len(t, middlewares, 4) // The server adds middleware
+				assert.Len(t, middlewares, 5) // The server adds middleware
 			} else {
-				assert.Len(t, middlewares, 3) // The server adds middleware
+				assert.Len(t, middlewares, 4) // The server adds middleware
 			}
 
 			count++
@@ -134,6 +134,36 @@ func TestNewServer(t *testing.T) {
 					assert.Equal(t, "/status", route.Pattern)
 					assert.Empty(t, route.Middlewares)
 					assert.NotNil(t, route.HandlerFunc)
+
+					rw.WriteHeader(http.StatusOK)
+				},
+			},
+		})
+
+		server := NewServer(DefaultConfig, &app)
+		server.server.Handler.ServeHTTP(recorder, request)
+
+		app.AssertExpectations(t)
+		assert.Equal(t, http.StatusOK, recorder.Code)
+	})
+
+	t.Run("adds the request vars middleware", func(t *testing.T) {
+		t.Parallel()
+
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, "/user/abc123/post/abc123", nil)
+
+		var app TestApplication
+		app.On("Middlewares").Return([]Middleware{})
+		app.On("Routes").Return(map[string]Route{
+			"user_post": {
+				Method:  http.MethodGet,
+				Pattern: "/user/{user}/post/{post}",
+				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
+					assert.Equal(t, map[string]string{
+						"user": "abc123",
+						"post": "abc123",
+					}, RequestVars(req))
 
 					rw.WriteHeader(http.StatusOK)
 				},

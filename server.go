@@ -30,7 +30,10 @@ func NewServer(config Config, app Application) *Server {
 
 	for name, route := range app.Routes() {
 		route.Name = name
-		router := mux.With(middleware.WithValue(routeContextKey{}, route))
+		router := mux.With(
+			middleware.WithValue(routeContextKey{}, route),
+			withRequestVars,
+		)
 
 		for _, middleware := range app.Middlewares() {
 			router.Use(middleware)
