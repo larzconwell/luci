@@ -88,7 +88,7 @@ func (server *Server) ListenAndServe(ctx context.Context) error {
 
 	listener, err := config.Listen(ctx, "tcp", server.config.Address)
 	if err != nil {
-		return fmt.Errorf("Listen: %w", err)
+		return fmt.Errorf("luci: listen: %w", err)
 	}
 	// listener closed via (*http.Server).Serve
 
@@ -117,7 +117,7 @@ func (server *Server) ListenAndServe(ctx context.Context) error {
 	err = server.server.Serve(listener)
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		close(done)
-		return fmt.Errorf("Serve: %w", err)
+		return fmt.Errorf("luci: serve: %w", err)
 	}
 
 	err = <-done
@@ -126,7 +126,7 @@ func (server *Server) ListenAndServe(ctx context.Context) error {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return ErrForcedShutdown
 	} else if err != nil {
-		return fmt.Errorf("Shutdown: %w", err)
+		return fmt.Errorf("luci: shutdown: %w", err)
 	}
 
 	return nil
