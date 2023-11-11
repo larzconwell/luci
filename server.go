@@ -95,7 +95,7 @@ func (server *Server) ListenAndServe(ctx context.Context) error {
 	server.address = listener.Addr().String()
 	close(server.started)
 
-	logger := server.logger.With("address", server.address)
+	logger := server.logger.With(slog.String("address", server.address))
 	logger.Info("Server started")
 
 	done := make(chan error, 1)
@@ -106,7 +106,9 @@ func (server *Server) ListenAndServe(ctx context.Context) error {
 		case <-ctx.Done():
 		}
 
-		logger.Info("Server closing", "timeout", server.config.ShutdownTimeout.String())
+		logger.With(
+			slog.Duration("timeout", server.config.ShutdownTimeout),
+		).Info("Server closing")
 
 		ctx, cancel := context.WithTimeout(context.Background(), server.config.ShutdownTimeout)
 		defer cancel()
