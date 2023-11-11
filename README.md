@@ -7,8 +7,8 @@ Go module to create web services quickly and painlessly.
 # Developing `luci`
 
 ## Prerequisites
-- Go
-- `golangci-lint`
+- Go 1.21
+- `golangci-lint` 1.55
 
 ## Setting up hooks
 ```
