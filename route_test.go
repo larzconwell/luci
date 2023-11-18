@@ -20,7 +20,7 @@ func TestRequestRoute(t *testing.T) {
 	}
 
 	request := httptest.NewRequest(http.MethodGet, "/status", nil)
-	request = request.WithContext(context.WithValue(request.Context(), routeContextKey{}, route))
+	request = request.WithContext(context.WithValue(request.Context(), requestRouteKey{}, route))
 
 	assert.Equal(t, route, RequestRoute(request))
 }

@@ -9,7 +9,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 )
 
 // Server maintains the running state of an application.
@@ -50,7 +49,7 @@ func NewServer(config Config, app Application) *Server {
 		}
 
 		router := mux.With(
-			middleware.WithValue(routeContextKey{}, route),
+			withRequestRoute(route),
 			withRequestVars,
 		)
 

@@ -2,6 +2,7 @@ package luci
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,7 +15,7 @@ var (
 	varMatcher = regexp.MustCompile("^{([^:]*):?(.*)}$")
 )
 
-type routeContextKey struct{}
+type requestRouteKey struct{}
 
 // Route defines an endpoint an application supports.
 type Route struct {
@@ -34,7 +35,7 @@ type Route struct {
 
 // RequestRoute retrieves the route that's associated with the given request.
 func RequestRoute(req *http.Request) Route {
-	route, _ := req.Context().Value(routeContextKey{}).(Route)
+	route, _ := req.Context().Value(requestRouteKey{}).(Route)
 	return route
 }
 
@@ -136,4 +137,13 @@ func (route Route) Path(vals ...string) (string, error) {
 	}
 
 	return builder.String(), nil
+}
+
+func withRequestRoute(route Route) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			newReq := req.WithContext(context.WithValue(req.Context(), requestRouteKey{}, route))
+			next.ServeHTTP(rw, newReq)
+		})
+	}
 }
