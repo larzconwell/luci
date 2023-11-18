@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +17,7 @@ func TestRequestVars(t *testing.T) {
 	ctx.URLParams.Add("key_2", "value")
 
 	middlewares := chi.Chain(
-		middleware.WithValue(chi.RouteCtxKey, &ctx),
+		WithValue(chi.RouteCtxKey, &ctx),
 		withRequestVars,
 	)
 	handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -38,7 +37,7 @@ func TestRequestVar(t *testing.T) {
 	ctx.URLParams.Add("key", "value")
 
 	middlewares := chi.Chain(
-		middleware.WithValue(chi.RouteCtxKey, &ctx),
+		WithValue(chi.RouteCtxKey, &ctx),
 		withRequestVars,
 	)
 	handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {

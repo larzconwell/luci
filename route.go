@@ -2,7 +2,6 @@ package luci
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -137,13 +136,4 @@ func (route Route) Path(vals ...string) (string, error) {
 	}
 
 	return builder.String(), nil
-}
-
-func withRequestRoute(route Route) Middleware {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			newReq := req.WithContext(context.WithValue(req.Context(), requestRouteKey{}, route))
-			next.ServeHTTP(rw, newReq)
-		})
-	}
 }

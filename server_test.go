@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -69,14 +68,14 @@ func TestNewServer(t *testing.T) {
 
 		var app TestApplication
 		app.On("Middlewares").Return([]Middleware{
-			middleware.WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+1), true),
+			WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+1), true),
 		})
 		app.On("Routes").Return([]Route{
 			{
 				Name:    "all_status",
 				Pattern: "/status",
 				Middlewares: []Middleware{
-					middleware.WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+2), true),
+					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+2), true),
 				},
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
 			},
@@ -85,8 +84,8 @@ func TestNewServer(t *testing.T) {
 				Method:  http.MethodGet,
 				Pattern: "/status",
 				Middlewares: []Middleware{
-					middleware.WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+2), true),
-					middleware.WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+3), true),
+					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+2), true),
+					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+3), true),
 				},
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
 			},
@@ -95,9 +94,9 @@ func TestNewServer(t *testing.T) {
 				Method:  http.MethodPost,
 				Pattern: "/status",
 				Middlewares: []Middleware{
-					middleware.WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+2), true),
-					middleware.WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+3), true),
-					middleware.WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+4), true),
+					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+2), true),
+					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+3), true),
+					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+4), true),
 				},
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
 			},
