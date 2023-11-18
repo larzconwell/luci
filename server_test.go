@@ -43,6 +43,7 @@ func TestNewServer(t *testing.T) {
 		t.Parallel()
 
 		var app TestApplication
+		app.On("Middlewares").Return(nil)
 		app.On("Routes").Return(nil)
 
 		server := NewServer(DefaultConfig, &app)
@@ -144,6 +145,7 @@ func TestNewServer(t *testing.T) {
 		t.Parallel()
 
 		var app TestApplication
+		app.On("Middlewares").Return(nil)
 		app.On("Routes").Return([]Route{
 			{
 				Method:      http.MethodGet,
@@ -163,6 +165,7 @@ func TestNewServer(t *testing.T) {
 		t.Parallel()
 
 		var app TestApplication
+		app.On("Middlewares").Return(nil)
 		app.On("Routes").Return([]Route{
 			{
 				Name:        "status",
@@ -189,6 +192,7 @@ func TestNewServer(t *testing.T) {
 		t.Parallel()
 
 		var app TestApplication
+		app.On("Middlewares").Return(nil)
 		app.On("Routes").Return([]Route{
 			{
 				Name:    "status",
