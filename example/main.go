@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"time"
@@ -26,6 +27,7 @@ func run() error {
 		Address:           ":7879",
 		ReadHeaderTimeout: time.Second,
 		ShutdownTimeout:   time.Second,
+		Logger:            slog.New(slog.NewJSONHandler(os.Stdout, nil)),
 	}
 
 	app := NewApplication(config)

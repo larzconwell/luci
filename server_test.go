@@ -118,11 +118,11 @@ func TestNewServer(t *testing.T) {
 
 			switch method {
 			case http.MethodGet:
-				assert.Len(t, middlewares, baseMiddlewareCount+4)
-			case http.MethodPost:
 				assert.Len(t, middlewares, baseMiddlewareCount+5)
+			case http.MethodPost:
+				assert.Len(t, middlewares, baseMiddlewareCount+6)
 			default:
-				assert.Len(t, middlewares, baseMiddlewareCount+3)
+				assert.Len(t, middlewares, baseMiddlewareCount+4)
 			}
 
 			count++
@@ -288,6 +288,34 @@ func TestNewServer(t *testing.T) {
 				Pattern: "/status",
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
 					assert.NotEmpty(t, RequestID(req))
+
+					rw.WriteHeader(http.StatusOK)
+				},
+			},
+		})
+
+		server := NewServer(DefaultConfig, &app)
+		server.server.Handler.ServeHTTP(recorder, request)
+
+		app.AssertExpectations(t)
+		assert.Equal(t, http.StatusOK, recorder.Code)
+	})
+
+	t.Run("adds the request logger middleware", func(t *testing.T) {
+		t.Parallel()
+
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+
+		var app TestApplication
+		app.On("Middlewares").Return(nil)
+		app.On("Routes").Return([]Route{
+			{
+				Name:    "status",
+				Method:  http.MethodGet,
+				Pattern: "/status",
+				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
+					assert.NotNil(t, RequestLogger(req))
 
 					rw.WriteHeader(http.StatusOK)
 				},

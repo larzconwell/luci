@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 
 	"github.com/larzconwell/luci"
 )
@@ -20,22 +19,17 @@ const (
 
 type Application struct {
 	db     *DB
-	logger *slog.Logger
 	server *luci.Server
 }
 
 func NewApplication(config luci.Config) *Application {
-	app := new(Application)
-
-	app.logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	config.Logger = app.logger
-
-	app.db = NewDB(map[string]*User{
-		"abc123": {Key: "abc123", Name: "luci"},
-	})
+	app := &Application{
+		db: NewDB(map[string]*User{
+			"abc123": {Key: "abc123", Name: "luci"},
+		}),
+	}
 
 	app.server = luci.NewServer(config, app)
-
 	return app
 }
 
@@ -60,7 +54,7 @@ func (app *Application) Middlewares() []luci.Middleware {
 	return nil
 }
 
-func (app *Application) Error(rw http.ResponseWriter, _ *http.Request, status int, err error) {
+func (app *Application) Error(rw http.ResponseWriter, req *http.Request, status int, err error) {
 	statusRoute, _ := app.server.Route(Status)
 	value := map[string]any{
 		"error":  err.Error(),
@@ -76,20 +70,20 @@ func (app *Application) Error(rw http.ResponseWriter, _ *http.Request, status in
 	encoder := json.NewEncoder(rw)
 	encodeErr := encoder.Encode(value)
 	if encodeErr != nil && !errors.Is(encodeErr, http.ErrHandlerTimeout) && !errors.Is(encodeErr, context.Canceled) {
-		app.logger.With(
+		luci.RequestLogger(req).With(
 			slog.Any("error", encodeErr),
 			slog.Any("source_error", err),
 		).Error("Failed to write response")
 	}
 }
 
-func (app *Application) Respond(rw http.ResponseWriter, _ *http.Request, value any) {
+func (app *Application) Respond(rw http.ResponseWriter, req *http.Request, value any) {
 	rw.Header().Set("Content-Type", "application/json")
 
 	encoder := json.NewEncoder(rw)
 	err := encoder.Encode(value)
 	if err != nil && !errors.Is(err, http.ErrHandlerTimeout) && !errors.Is(err, context.Canceled) {
-		app.logger.With(slog.Any("error", err)).Error("Failed to write response")
+		luci.RequestLogger(req).With(slog.Any("error", err)).Error("Failed to write response")
 	}
 }
 

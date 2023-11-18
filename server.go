@@ -53,6 +53,7 @@ func NewServer(config Config, app Application) *Server {
 			WithValue(requestRouteKey{}, route),
 			withRequestVars,
 			withRequestID(app.Error),
+			withRequestLogger(config.Logger),
 		)
 
 		for _, middleware := range middlewares {
@@ -103,7 +104,7 @@ func (server *Server) ListenAndServe(ctx context.Context) error {
 	server.address = listener.Addr().String()
 	close(server.started)
 
-	logger := server.logger.With(slog.Group("server", slog.String("address", server.address)))
+	logger := server.logger.WithGroup("server").With(slog.String("address", server.address))
 	logger.Info("Server started")
 
 	done := make(chan error, 1)
@@ -115,7 +116,7 @@ func (server *Server) ListenAndServe(ctx context.Context) error {
 		}
 
 		logger.With(
-			slog.Duration("timeout", server.config.ShutdownTimeout),
+			slog.String("timeout", server.config.ShutdownTimeout.String()),
 		).Info("Server closing")
 
 		ctx, cancel := context.WithTimeout(context.Background(), server.config.ShutdownTimeout)
