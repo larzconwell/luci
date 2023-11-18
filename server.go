@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
+// Server maintains the running state of an application.
 type Server struct {
 	config  Config
 	app     Application
@@ -22,6 +23,9 @@ type Server struct {
 	address string
 }
 
+// NewServer creates a server for the given application using the given configuration.
+// NewServer panics if any route does not have a name, the name is not unique, or if the
+// route doesn't have a handler defined.
 func NewServer(config Config, app Application) *Server {
 	config = buildConfig(config)
 
@@ -83,6 +87,9 @@ func NewServer(config Config, app Application) *Server {
 	}
 }
 
+// ListenAndServe listens on the configured address and serves requests until the given context has been cancelled.
+// ListenAndServe will gracefully shutdown on context cancellation up until the configured shutdown timeout has been
+// reached, if the shutdown timeout is reached ErrForcedShutdown is returned.
 func (server *Server) ListenAndServe(ctx context.Context) error {
 	var config net.ListenConfig
 
@@ -134,11 +141,14 @@ func (server *Server) ListenAndServe(ctx context.Context) error {
 	return nil
 }
 
+// Address can be used to retrieve the address the server is listening on.
+// Address blocks until the server has begun listening on the address.
 func (server *Server) Address() string {
 	<-server.started
 	return server.address
 }
 
+// Route retrieves a defined route by name, and whether a route was found with the given name.
 func (server *Server) Route(name string) (Route, bool) {
 	route, ok := server.routes[name]
 	return route, ok

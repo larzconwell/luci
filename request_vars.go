@@ -9,11 +9,13 @@ import (
 
 type requestVarsKey struct{}
 
+// RequestVars returns the request variables that are defined by the associated routes pattern.
 func RequestVars(req *http.Request) map[string]string {
 	vars, _ := req.Context().Value(requestVarsKey{}).(map[string]string)
 	return vars
 }
 
+// RequestVar returns the request variable with the given key that is defined by the associated routes pattern.
 func RequestVar(req *http.Request, key string) string {
 	return RequestVars(req)[key]
 }

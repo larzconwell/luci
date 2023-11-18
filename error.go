@@ -6,11 +6,15 @@ import (
 )
 
 var (
+	// ErrMethodNotAllowed is used for requests with a method that's not allowed by a route.
 	ErrMethodNotAllowed = errors.New("luci: method not allowed")
-	ErrNotFound         = errors.New("luci: not found")
-	ErrForcedShutdown   = errors.New("luci: forced server shutdown")
+	// ErrNotFound is used for requests with a path that doesn't match any routes.
+	ErrNotFound = errors.New("luci: not found")
+	// ErrForcedShutdown is used when server shutdown takes longer than the configured timeout.
+	ErrForcedShutdown = errors.New("luci: forced server shutdown")
 )
 
+// ErrorHandlerFunc is used to define functions that handle error specific responses.
 type ErrorHandlerFunc func(http.ResponseWriter, *http.Request, int, error)
 
 func errorRespond(errorHandler ErrorHandlerFunc, status int, err error) http.HandlerFunc {

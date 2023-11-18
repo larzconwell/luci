@@ -6,6 +6,7 @@ import (
 )
 
 var (
+	// DefaultConfig is the base configuration that's used when creating a server.
 	DefaultConfig = Config{ //nolint:gochecknoglobals
 		Address:           ":http",
 		ReadHeaderTimeout: time.Second,
@@ -14,11 +15,20 @@ var (
 	}
 )
 
+// Config defines how a server should behave when it's running.
+// See DefaultConfig for configuration defaults.
 type Config struct {
-	Address           string
+	// Address defines the address to listen on.
+	Address string
+	// ReadHeaderTimeout defines the timeout to read request headers.
+	// See net/http.Server.ReadHeaderTimeout for details.
 	ReadHeaderTimeout time.Duration
-	ShutdownTimeout   time.Duration
-	Logger            *slog.Logger
+	// ShutdownTimeout defines the timeout for the server to gracefully
+	// shutdown on context cancellation.
+	ShutdownTimeout time.Duration
+	// Logger defines the logger the server uses when logging startup/shutdown/requests.
+	// It is recommended to pass in a logger group via log/slog.Logger.WithGroup.
+	Logger *slog.Logger
 }
 
 func buildConfig(config Config) Config {

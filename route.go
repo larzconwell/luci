@@ -16,23 +16,36 @@ var (
 
 type routeContextKey struct{}
 
+// Route defines an endpoint an application supports.
 type Route struct {
-	Name        string
-	Method      string
-	Pattern     string
+	// Name is used to uniquely identify a route by name.
+	Name string
+	// Method may be optionally used to specify the method a route supports.
+	// If not set the route will be used for all methods.
+	Method string
+	// Defines the pattern that the route should match on.
+	// Refer to github.com/go-chi/chi/v5 for details on defining patterns.
+	Pattern string
+	// Middlewares define the route specific middlewares to run after the application middlewares.
 	Middlewares []Middleware
+	// HandlerFunc defines the handler function to call to handle the request.
 	HandlerFunc http.HandlerFunc
 }
 
+// RequestRoute retrieves the route that's associated with the given request.
 func RequestRoute(req *http.Request) Route {
 	route, _ := req.Context().Value(routeContextKey{}).(Route)
 	return route
 }
 
+// String returns the routes name, method, and pattern.
 func (route Route) String() string {
 	return fmt.Sprintf("%s %s %s", route.Name, route.Method, route.Pattern)
 }
 
+// Path builds an absolute path from the routes pattern using the given variable values.
+// Variable values must be in the order defined by the routes pattern, and are validated
+// against the associated regex matcher if one exists.
 func (route Route) Path(vals ...string) (string, error) {
 	if route.Pattern == "" {
 		return "", errors.New("luci: route pattern must not be empty")
