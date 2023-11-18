@@ -32,6 +32,7 @@ func NewServer(config Config, app Application) *Server {
 	mux.MethodNotAllowed(errorRespond(app.Error, http.StatusMethodNotAllowed, ErrMethodNotAllowed))
 	mux.NotFound(errorRespond(app.Error, http.StatusNotFound, ErrNotFound))
 
+	middlewares := app.Middlewares()
 	routes := app.Routes()
 	routesByName := make(map[string]Route, len(routes))
 	for _, route := range routes {
@@ -53,7 +54,7 @@ func NewServer(config Config, app Application) *Server {
 			withRequestVars,
 		)
 
-		for _, middleware := range app.Middlewares() {
+		for _, middleware := range middlewares {
 			router.Use(middleware)
 		}
 
