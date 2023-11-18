@@ -118,11 +118,11 @@ func TestNewServer(t *testing.T) {
 
 			switch method {
 			case http.MethodGet:
-				assert.Len(t, middlewares, baseMiddlewareCount+3)
-			case http.MethodPost:
 				assert.Len(t, middlewares, baseMiddlewareCount+4)
+			case http.MethodPost:
+				assert.Len(t, middlewares, baseMiddlewareCount+5)
 			default:
-				assert.Len(t, middlewares, baseMiddlewareCount+2)
+				assert.Len(t, middlewares, baseMiddlewareCount+3)
 			}
 
 			count++
@@ -246,20 +246,48 @@ func TestNewServer(t *testing.T) {
 		t.Parallel()
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/user/abc123/post/abc123", nil)
+		request := httptest.NewRequest(http.MethodPost, "/user/abc123/post/abc123", nil)
 
 		var app TestApplication
 		app.On("Middlewares").Return(nil)
 		app.On("Routes").Return([]Route{
 			{
 				Name:    "user_post",
-				Method:  http.MethodGet,
+				Method:  http.MethodPost,
 				Pattern: "/user/{user}/post/{post}",
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
 					assert.Equal(t, map[string]string{
 						"user": "abc123",
 						"post": "abc123",
 					}, RequestVars(req))
+
+					rw.WriteHeader(http.StatusOK)
+				},
+			},
+		})
+
+		server := NewServer(DefaultConfig, &app)
+		server.server.Handler.ServeHTTP(recorder, request)
+
+		app.AssertExpectations(t)
+		assert.Equal(t, http.StatusOK, recorder.Code)
+	})
+
+	t.Run("adds the request id middleware", func(t *testing.T) {
+		t.Parallel()
+
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+
+		var app TestApplication
+		app.On("Middlewares").Return(nil)
+		app.On("Routes").Return([]Route{
+			{
+				Name:    "status",
+				Method:  http.MethodGet,
+				Pattern: "/status",
+				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
+					assert.NotEmpty(t, RequestID(req))
 
 					rw.WriteHeader(http.StatusOK)
 				},

@@ -15,10 +15,9 @@ func TestWithValue(t *testing.T) {
 	expected := time.Now().UTC()
 	middleware := WithValue("time", expected)
 
-	var actual any
-	middleware(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		actual = req.Context().Value("time")
-	})).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/status", nil))
+	handler := middleware(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		assert.Exactly(t, expected, req.Context().Value("time"))
+	}))
 
-	assert.Exactly(t, expected, actual)
+	handler.ServeHTTP(nil, httptest.NewRequest(http.MethodGet, "/status", nil))
 }

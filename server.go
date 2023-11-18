@@ -52,6 +52,7 @@ func NewServer(config Config, app Application) *Server {
 		router := mux.With(
 			WithValue(requestRouteKey{}, route),
 			withRequestVars,
+			withRequestID(app.Error),
 		)
 
 		for _, middleware := range middlewares {
