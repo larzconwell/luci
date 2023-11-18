@@ -23,7 +23,7 @@ func run() error {
 	defer cancel()
 
 	config := luci.Config{
-		Address:           ":0",
+		Address:           ":7879",
 		ReadHeaderTimeout: time.Second,
 		ShutdownTimeout:   time.Second,
 	}
