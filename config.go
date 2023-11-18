@@ -11,7 +11,7 @@ var (
 		Address:           ":http",
 		ReadHeaderTimeout: time.Second,
 		ShutdownTimeout:   5 * time.Second,
-		Logger:            slog.Default().WithGroup("server"),
+		Logger:            slog.Default(),
 	}
 )
 
@@ -27,7 +27,6 @@ type Config struct {
 	// shutdown on context cancellation.
 	ShutdownTimeout time.Duration
 	// Logger defines the logger the server uses when logging startup/shutdown/requests.
-	// It is recommended to pass in a logger group via log/slog.Logger.WithGroup.
 	Logger *slog.Logger
 }
 

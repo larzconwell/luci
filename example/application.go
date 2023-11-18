@@ -28,7 +28,7 @@ func NewApplication(config luci.Config) *Application {
 	app := new(Application)
 
 	app.logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	config.Logger = app.logger.WithGroup("server")
+	config.Logger = app.logger
 
 	app.db = NewDB(map[string]*User{
 		"abc123": {Key: "abc123", Name: "luci"},
