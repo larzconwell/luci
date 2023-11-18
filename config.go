@@ -7,7 +7,7 @@ import (
 
 var (
 	// DefaultConfig is the base configuration that's used when creating a server.
-	DefaultConfig = Config{ //nolint:gochecknoglobals
+	DefaultConfig = Config{
 		Address:           ":http",
 		ReadHeaderTimeout: time.Second,
 		ShutdownTimeout:   5 * time.Second,
