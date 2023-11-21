@@ -40,6 +40,7 @@ func withLogger(serverLogger *slog.Logger) Middleware {
 
 			logger.With(slog.Group(
 				"response",
+				slog.String("duration", Duration(req).String()),
 				slog.Int("status", wrw.status),
 				slog.Int("length", wrw.length),
 				slog.String("type", wrw.Header().Get("Content-Type")),

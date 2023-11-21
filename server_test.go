@@ -118,11 +118,11 @@ func TestNewServer(t *testing.T) {
 
 			switch method {
 			case http.MethodGet:
-				assert.Len(t, middlewares, baseMiddlewareCount+6)
-			case http.MethodPost:
 				assert.Len(t, middlewares, baseMiddlewareCount+7)
+			case http.MethodPost:
+				assert.Len(t, middlewares, baseMiddlewareCount+8)
 			default:
-				assert.Len(t, middlewares, baseMiddlewareCount+5)
+				assert.Len(t, middlewares, baseMiddlewareCount+6)
 			}
 
 			count++
@@ -223,6 +223,35 @@ func TestNewServer(t *testing.T) {
 				Pattern: "/status",
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
 					assert.IsType(t, new(responseWriter), rw)
+
+					rw.WriteHeader(http.StatusOK)
+				},
+			},
+		})
+
+		server := NewServer(DefaultConfig, &app)
+		server.server.Handler.ServeHTTP(recorder, request)
+
+		app.AssertExpectations(t)
+		assert.Equal(t, http.StatusOK, recorder.Code)
+	})
+
+	t.Run("adds the duration middleware", func(t *testing.T) {
+		t.Parallel()
+
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+
+		var app TestApplication
+		app.On("Middlewares").Return(nil)
+		app.On("Routes").Return([]Route{
+			{
+				Name:    "status",
+				Method:  http.MethodGet,
+				Pattern: "/status",
+				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
+					<-time.After(time.Millisecond)
+					assert.Greater(t, Duration(req), time.Duration(0))
 
 					rw.WriteHeader(http.StatusOK)
 				},
