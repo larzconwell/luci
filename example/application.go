@@ -70,7 +70,7 @@ func (app *Application) Error(rw http.ResponseWriter, req *http.Request, status 
 	encoder := json.NewEncoder(rw)
 	encodeErr := encoder.Encode(value)
 	if encodeErr != nil && !errors.Is(encodeErr, http.ErrHandlerTimeout) && !errors.Is(encodeErr, context.Canceled) {
-		luci.RequestLogger(req).With(
+		luci.Logger(req).With(
 			slog.Any("error", encodeErr),
 			slog.Any("source_error", err),
 		).Error("Failed to write response")
@@ -83,7 +83,7 @@ func (app *Application) Respond(rw http.ResponseWriter, req *http.Request, value
 	encoder := json.NewEncoder(rw)
 	err := encoder.Encode(value)
 	if err != nil && !errors.Is(err, http.ErrHandlerTimeout) && !errors.Is(err, context.Canceled) {
-		luci.RequestLogger(req).With(slog.Any("error", err)).Error("Failed to write response")
+		luci.Logger(req).With(slog.Any("error", err)).Error("Failed to write response")
 	}
 }
 

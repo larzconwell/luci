@@ -329,7 +329,7 @@ func TestNewServer(t *testing.T) {
 		assert.Equal(t, http.StatusOK, recorder.Code)
 	})
 
-	t.Run("adds the request logger middleware", func(t *testing.T) {
+	t.Run("adds the logger middleware", func(t *testing.T) {
 		t.Parallel()
 
 		recorder := httptest.NewRecorder()
@@ -343,7 +343,7 @@ func TestNewServer(t *testing.T) {
 				Method:  http.MethodGet,
 				Pattern: "/status",
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
-					assert.NotNil(t, RequestLogger(req))
+					assert.NotNil(t, Logger(req))
 
 					rw.WriteHeader(http.StatusOK)
 				},

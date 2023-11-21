@@ -54,7 +54,7 @@ func NewServer(config Config, app Application) *Server {
 			WithValue(requestRouteKey{}, route),
 			withRequestVars,
 			withID(app.Error),
-			withRequestLogger(config.Logger),
+			withLogger(config.Logger),
 		)
 
 		for _, middleware := range middlewares {

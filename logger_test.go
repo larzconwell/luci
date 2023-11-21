@@ -10,18 +10,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRequestLogger(t *testing.T) {
+func TestLogger(t *testing.T) {
 	t.Parallel()
 
 	logger := slog.Default()
 
 	request := httptest.NewRequest(http.MethodGet, "/status", nil)
-	request = request.WithContext(context.WithValue(request.Context(), requestLoggerKey{}, logger))
+	request = request.WithContext(context.WithValue(request.Context(), loggerKey{}, logger))
 
-	assert.Same(t, logger, RequestLogger(request))
+	assert.Same(t, logger, Logger(request))
 }
 
-func TestWithRequestLogger(t *testing.T) {
+func TestWithLogger(t *testing.T) {
 	t.Parallel()
 
 	t.Run("adds logger to request context", func(t *testing.T) {
@@ -29,8 +29,8 @@ func TestWithRequestLogger(t *testing.T) {
 
 		logger := slog.Default()
 
-		handler := withRequestLogger(logger)(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			assert.NotNil(t, RequestLogger(req))
+		handler := withLogger(logger)(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			assert.NotNil(t, Logger(req))
 		}))
 
 		rw := &responseWriterWrapper{rw: httptest.NewRecorder()}
@@ -44,7 +44,7 @@ func TestWithRequestLogger(t *testing.T) {
 
 		logger := slog.Default()
 
-		handler := withRequestLogger(logger)(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := withLogger(logger)(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			assert.Fail(t, "handler should not be called")
 		}))
 

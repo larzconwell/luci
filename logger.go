@@ -7,15 +7,15 @@ import (
 	"net/http"
 )
 
-type requestLoggerKey struct{}
+type loggerKey struct{}
 
-// RequestLogger returns the logger associated with the request.
-func RequestLogger(req *http.Request) *slog.Logger {
-	logger, _ := req.Context().Value(requestLoggerKey{}).(*slog.Logger)
+// Logger returns the logger associated with the request.
+func Logger(req *http.Request) *slog.Logger {
+	logger, _ := req.Context().Value(loggerKey{}).(*slog.Logger)
 	return logger
 }
 
-func withRequestLogger(serverLogger *slog.Logger) Middleware {
+func withLogger(serverLogger *slog.Logger) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			rww, ok := rw.(*responseWriterWrapper)
@@ -35,7 +35,7 @@ func withRequestLogger(serverLogger *slog.Logger) Middleware {
 				slog.Group("vars", varAttrs...),
 			))
 
-			newReq := req.WithContext(context.WithValue(req.Context(), requestLoggerKey{}, logger))
+			newReq := req.WithContext(context.WithValue(req.Context(), loggerKey{}, logger))
 			next.ServeHTTP(rww, newReq)
 
 			logger.With(slog.Group(
