@@ -31,10 +31,11 @@ func TestWithRequestID(t *testing.T) {
 			assert.Equal(t, "luci", RequestID(req))
 		}))
 
+		recorder := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodGet, "/status", nil)
 		request.Header.Set("X-Request-Id", "luci")
 
-		handler.ServeHTTP(nil, request)
+		handler.ServeHTTP(recorder, request)
 	})
 
 	t.Run("generates a valid ULID request id", func(t *testing.T) {
@@ -48,6 +49,23 @@ func TestWithRequestID(t *testing.T) {
 			assert.NoError(t, err)
 		}))
 
-		handler.ServeHTTP(nil, httptest.NewRequest(http.MethodGet, "/status", nil))
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/status", nil))
+	})
+
+	t.Run("adds X-Request-Id to response headers", func(t *testing.T) {
+		t.Parallel()
+
+		handler := withRequestID(nil)(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			rw.WriteHeader(http.StatusOK)
+		}))
+
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request.Header.Set("X-Request-Id", "luci")
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, "luci", recorder.Header().Get("X-Request-Id"))
 	})
 }

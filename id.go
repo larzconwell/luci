@@ -28,7 +28,9 @@ func RequestID(req *http.Request) string {
 func withRequestID(errorHandler ErrorHandlerFunc) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			id := req.Header.Get("X-Request-Id")
+			header := "X-Request-Id"
+
+			id := req.Header.Get(header)
 			if id == "" {
 				now := ulid.Now()
 				ulid, err := ulid.New(now, entropy)
@@ -39,6 +41,8 @@ func withRequestID(errorHandler ErrorHandlerFunc) Middleware {
 
 				id = ulid.String()
 			}
+
+			rw.Header().Set(header, id)
 
 			newReq := req.WithContext(context.WithValue(req.Context(), requestIDKey{}, id))
 			next.ServeHTTP(rw, newReq)
