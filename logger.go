@@ -24,7 +24,7 @@ func withLogger(serverLogger *slog.Logger) Middleware {
 			}
 
 			var varAttrs []any
-			for key, value := range RequestVars(req) {
+			for key, value := range Vars(req) {
 				varAttrs = append(varAttrs, slog.String(key, value))
 			}
 

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRequestVars(t *testing.T) {
+func TestVars(t *testing.T) {
 	t.Parallel()
 
 	var ctx chi.Context
@@ -18,19 +18,19 @@ func TestRequestVars(t *testing.T) {
 
 	middlewares := chi.Chain(
 		WithValue(chi.RouteCtxKey, &ctx),
-		withRequestVars,
+		withVars,
 	)
 	handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		assert.Equal(t, map[string]string{
 			"key_1": "value",
 			"key_2": "value",
-		}, RequestVars(req))
+		}, Vars(req))
 	})
 
 	handler.ServeHTTP(nil, httptest.NewRequest(http.MethodGet, "/status", nil))
 }
 
-func TestRequestVar(t *testing.T) {
+func TestVar(t *testing.T) {
 	t.Parallel()
 
 	var ctx chi.Context
@@ -38,11 +38,11 @@ func TestRequestVar(t *testing.T) {
 
 	middlewares := chi.Chain(
 		WithValue(chi.RouteCtxKey, &ctx),
-		withRequestVars,
+		withVars,
 	)
 	handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		assert.Equal(t, "value", RequestVar(req, "key"))
-		assert.Empty(t, RequestVar(req, "nonexistent_key"))
+		assert.Equal(t, "value", Var(req, "key"))
+		assert.Empty(t, Var(req, "nonexistent_key"))
 	})
 
 	handler.ServeHTTP(nil, httptest.NewRequest(http.MethodGet, "/status", nil))

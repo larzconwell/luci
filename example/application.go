@@ -94,7 +94,7 @@ func (app *Application) Status(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (app *Application) ShowUser(rw http.ResponseWriter, req *http.Request) {
-	key := luci.RequestVar(req, "key")
+	key := luci.Var(req, "key")
 
 	user, ok := app.db.Get(key)
 	if !ok {
@@ -119,7 +119,7 @@ func (app *Application) ShowUser(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (app *Application) UpdateUser(rw http.ResponseWriter, req *http.Request) {
-	key := luci.RequestVar(req, "key")
+	key := luci.Var(req, "key")
 
 	name := req.FormValue("name")
 	if name == "" {

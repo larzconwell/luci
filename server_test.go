@@ -270,7 +270,7 @@ func TestNewServer(t *testing.T) {
 		assert.Equal(t, http.StatusOK, recorder.Code)
 	})
 
-	t.Run("adds the request vars middleware", func(t *testing.T) {
+	t.Run("adds the vars middleware", func(t *testing.T) {
 		t.Parallel()
 
 		recorder := httptest.NewRecorder()
@@ -287,7 +287,7 @@ func TestNewServer(t *testing.T) {
 					assert.Equal(t, map[string]string{
 						"user": "abc123",
 						"post": "abc123",
-					}, RequestVars(req))
+					}, Vars(req))
 
 					rw.WriteHeader(http.StatusOK)
 				},
