@@ -28,21 +28,29 @@ func RequestID(req *http.Request) string {
 func withRequestID(errorHandler ErrorHandlerFunc) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			header := "X-Request-Id"
+			xKey := "X-Request-Id"
+			key := "Request-Id"
 
-			id := req.Header.Get(header)
+			xID := req.Header.Get(xKey)
+			id := req.Header.Get(key)
+			if id == "" {
+				id = xID
+			}
+
 			if id == "" {
 				now := ulid.Now()
 				ulid, err := ulid.New(now, entropy)
 				if err != nil {
-					errorHandler(rw, req, http.StatusInternalServerError, fmt.Errorf("request id generate: %w", err))
+					errorHandler(rw, req, http.StatusInternalServerError, fmt.Errorf("luci: request id generate: %w", err))
 					return
 				}
 
 				id = ulid.String()
 			}
 
-			rw.Header().Set(header, id)
+			header := rw.Header()
+			header.Set(xKey, id)
+			header.Set(key, id)
 
 			newReq := req.WithContext(context.WithValue(req.Context(), requestIDKey{}, id))
 			next.ServeHTTP(rw, newReq)
