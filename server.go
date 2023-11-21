@@ -50,6 +50,7 @@ func NewServer(config Config, app Application) *Server {
 		}
 
 		router := mux.With(
+			withResponseWriterWrapper,
 			WithValue(requestRouteKey{}, route),
 			withRequestVars,
 			withRequestID(app.Error),
