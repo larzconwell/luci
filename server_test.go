@@ -208,7 +208,7 @@ func TestNewServer(t *testing.T) {
 		app.AssertExpectations(t)
 	})
 
-	t.Run("adds the response wrapper middleware", func(t *testing.T) {
+	t.Run("adds the response writer middleware", func(t *testing.T) {
 		t.Parallel()
 
 		recorder := httptest.NewRecorder()
@@ -222,7 +222,7 @@ func TestNewServer(t *testing.T) {
 				Method:  http.MethodGet,
 				Pattern: "/status",
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
-					assert.IsType(t, new(responseWriterWrapper), rw)
+					assert.IsType(t, new(responseWriter), rw)
 
 					rw.WriteHeader(http.StatusOK)
 				},

@@ -18,7 +18,7 @@ func Logger(req *http.Request) *slog.Logger {
 func withLogger(serverLogger *slog.Logger) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			rww, ok := rw.(*responseWriterWrapper)
+			wrw, ok := rw.(*responseWriter)
 			if !ok {
 				panic(errors.New("luci: response writer has not been wrapped"))
 			}
@@ -36,13 +36,13 @@ func withLogger(serverLogger *slog.Logger) Middleware {
 			))
 
 			newReq := req.WithContext(context.WithValue(req.Context(), loggerKey{}, logger))
-			next.ServeHTTP(rww, newReq)
+			next.ServeHTTP(wrw, newReq)
 
 			logger.With(slog.Group(
 				"response",
-				slog.Int("status", rww.status),
-				slog.Int("length", rww.length),
-				slog.String("type", rww.Header().Get("Content-Type")),
+				slog.Int("status", wrw.status),
+				slog.Int("length", wrw.length),
+				slog.String("type", wrw.Header().Get("Content-Type")),
 			)).Info("Request")
 		})
 	}

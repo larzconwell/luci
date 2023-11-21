@@ -33,7 +33,7 @@ func TestWithLogger(t *testing.T) {
 			assert.NotNil(t, Logger(req))
 		}))
 
-		rw := &responseWriterWrapper{rw: httptest.NewRecorder()}
+		rw := &responseWriter{rw: httptest.NewRecorder()}
 		req := httptest.NewRequest(http.MethodGet, "/status", nil)
 
 		handler.ServeHTTP(rw, req)
