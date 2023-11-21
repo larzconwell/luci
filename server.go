@@ -53,7 +53,7 @@ func NewServer(config Config, app Application) *Server {
 			withResponseWriterWrapper,
 			WithValue(requestRouteKey{}, route),
 			withRequestVars,
-			withRequestID(app.Error),
+			withID(app.Error),
 			withRequestLogger(config.Logger),
 		)
 

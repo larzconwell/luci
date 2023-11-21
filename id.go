@@ -17,15 +17,15 @@ var (
 	}
 )
 
-type requestIDKey struct{}
+type idKey struct{}
 
-// RequestID returns the unique identifier associated with the request.
-func RequestID(req *http.Request) string {
-	id, _ := req.Context().Value(requestIDKey{}).(string)
+// ID returns the unique identifier associated with the request.
+func ID(req *http.Request) string {
+	id, _ := req.Context().Value(idKey{}).(string)
 	return id
 }
 
-func withRequestID(errorHandler ErrorHandlerFunc) Middleware {
+func withID(errorHandler ErrorHandlerFunc) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			xKey := "X-Request-Id"
@@ -41,7 +41,7 @@ func withRequestID(errorHandler ErrorHandlerFunc) Middleware {
 				now := ulid.Now()
 				ulid, err := ulid.New(now, entropy)
 				if err != nil {
-					errorHandler(rw, req, http.StatusInternalServerError, fmt.Errorf("luci: request id generate: %w", err))
+					errorHandler(rw, req, http.StatusInternalServerError, fmt.Errorf("luci: id generate: %w", err))
 					return
 				}
 
@@ -52,7 +52,7 @@ func withRequestID(errorHandler ErrorHandlerFunc) Middleware {
 			header.Set(xKey, id)
 			header.Set(key, id)
 
-			newReq := req.WithContext(context.WithValue(req.Context(), requestIDKey{}, id))
+			newReq := req.WithContext(context.WithValue(req.Context(), idKey{}, id))
 			next.ServeHTTP(rw, newReq)
 		})
 	}

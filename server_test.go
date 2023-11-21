@@ -301,7 +301,7 @@ func TestNewServer(t *testing.T) {
 		assert.Equal(t, http.StatusOK, recorder.Code)
 	})
 
-	t.Run("adds the request id middleware", func(t *testing.T) {
+	t.Run("adds the id middleware", func(t *testing.T) {
 		t.Parallel()
 
 		recorder := httptest.NewRecorder()
@@ -315,7 +315,7 @@ func TestNewServer(t *testing.T) {
 				Method:  http.MethodGet,
 				Pattern: "/status",
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
-					assert.NotEmpty(t, RequestID(req))
+					assert.NotEmpty(t, ID(req))
 
 					rw.WriteHeader(http.StatusOK)
 				},

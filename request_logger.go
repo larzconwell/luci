@@ -31,7 +31,7 @@ func withRequestLogger(serverLogger *slog.Logger) Middleware {
 			logger := serverLogger.With(slog.Group(
 				"request",
 				slog.String("route", RequestRoute(req).Name),
-				slog.String("id", RequestID(req)),
+				slog.String("id", ID(req)),
 				slog.Group("vars", varAttrs...),
 			))
 
