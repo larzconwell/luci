@@ -1,12 +1,34 @@
 package luci
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
+
+type testPusherResponseWriter struct {
+	http.ResponseWriter
+	mock.Mock
+}
+
+func (tprw *testPusherResponseWriter) Push(target string, opts *http.PushOptions) error {
+	err, _ := tprw.MethodCalled("Push", target, opts).Get(0).(error)
+	return err
+}
+
+func TestResponseWriter(t *testing.T) {
+	t.Parallel()
+	rw := new(responseWriter)
+
+	assert.Implements(t, (*io.ReaderFrom)(nil), rw)
+	assert.Implements(t, (*http.Flusher)(nil), rw)
+	assert.Implements(t, (*http.Pusher)(nil), rw)
+}
 
 func TestResponseWriterHeader(t *testing.T) {
 	t.Parallel()
@@ -93,8 +115,110 @@ func TestResponseWriterWrite(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 4, n)
 
-		assert.Equal(t, 7, wrw.length)
+		assert.Equal(t, int64(7), wrw.length)
 		assert.Equal(t, "abc1234", rw.Body.String())
+	})
+}
+
+func TestResponseWriterReadFrom(t *testing.T) {
+	t.Parallel()
+
+	t.Run("calls WriteHeader with 200 if not already called", func(t *testing.T) {
+		t.Parallel()
+
+		rw := httptest.NewRecorder()
+		wrw := &responseWriter{rw: rw}
+
+		reader := bytes.NewBufferString("abc")
+
+		_, err := wrw.ReadFrom(reader)
+		assert.NoError(t, err)
+
+		assert.Equal(t, http.StatusOK, rw.Code)
+	})
+
+	t.Run("doesn't call WriteHeader if already called", func(t *testing.T) {
+		t.Parallel()
+
+		rw := httptest.NewRecorder()
+		wrw := &responseWriter{rw: rw}
+		wrw.WriteHeader(http.StatusBadRequest)
+
+		reader := bytes.NewBufferString("abc")
+
+		_, err := wrw.ReadFrom(reader)
+		assert.NoError(t, err)
+
+		assert.Equal(t, http.StatusBadRequest, rw.Code)
+	})
+
+	t.Run("reads from the given reader and writes to the wrapped ResponseWriter", func(t *testing.T) {
+		t.Parallel()
+
+		rw := httptest.NewRecorder()
+		wrw := &responseWriter{rw: rw}
+
+		reader1 := bytes.NewBufferString("abc")
+
+		n, err := wrw.ReadFrom(reader1)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(3), n)
+
+		reader2 := bytes.NewBufferString("1234")
+
+		n, err = wrw.ReadFrom(reader2)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(4), n)
+
+		assert.Equal(t, int64(7), wrw.length)
+		assert.Equal(t, "abc1234", rw.Body.String())
+	})
+}
+
+func TestResponseWriterFlush(t *testing.T) {
+	t.Parallel()
+
+	rw := httptest.NewRecorder()
+	wrw := &responseWriter{rw: rw}
+
+	wrw.Flush()
+
+	assert.True(t, rw.Flushed)
+}
+
+func TestResponseWriterPush(t *testing.T) {
+	t.Parallel()
+
+	t.Run("calls Push on the wrapped ResponseWriter if it implements http.Pusher", func(t *testing.T) {
+		t.Parallel()
+
+		header := make(http.Header)
+		header.Set("Content-Type", "application/json")
+
+		pushOptions := &http.PushOptions{
+			Method: http.MethodGet,
+			Header: header,
+		}
+
+		rw := &testPusherResponseWriter{
+			ResponseWriter: httptest.NewRecorder(),
+		}
+		rw.On("Push", "target", pushOptions).Return(nil)
+
+		wrw := &responseWriter{rw: rw}
+		err := wrw.Push("target", pushOptions)
+		assert.NoError(t, err)
+
+		rw.AssertExpectations(t)
+	})
+
+	t.Run("returns http.ErrNotSupported if the wrapped ResponseWriter does not implement http.Pusher", func(t *testing.T) {
+		t.Parallel()
+
+		rw := httptest.NewRecorder()
+		wrw := &responseWriter{rw: rw}
+
+		assert.Equal(t, http.ErrNotSupported, wrw.Push("target", nil))
 	})
 }
 
