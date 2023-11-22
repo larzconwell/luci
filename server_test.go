@@ -23,8 +23,8 @@ func (ta *TestApplication) Routes() []Route {
 	return routes
 }
 
-func (ta *TestApplication) Middlewares() []Middleware {
-	middlewares, _ := ta.MethodCalled("Middlewares").Get(0).([]Middleware)
+func (ta *TestApplication) Middlewares() Middlewares {
+	middlewares, _ := ta.MethodCalled("Middlewares").Get(0).(Middlewares)
 	return middlewares
 }
 
@@ -68,14 +68,14 @@ func TestNewServer(t *testing.T) {
 		baseMiddlewareCount := 2
 
 		var app TestApplication
-		app.On("Middlewares").Return([]Middleware{
+		app.On("Middlewares").Return(Middlewares{
 			WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+1), true),
 		})
 		app.On("Routes").Return([]Route{
 			{
 				Name:    "all_status",
 				Pattern: "/status",
-				Middlewares: []Middleware{
+				Middlewares: Middlewares{
 					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+2), true),
 				},
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
@@ -84,7 +84,7 @@ func TestNewServer(t *testing.T) {
 				Name:    "get_status",
 				Method:  http.MethodGet,
 				Pattern: "/status",
-				Middlewares: []Middleware{
+				Middlewares: Middlewares{
 					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+2), true),
 					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+3), true),
 				},
@@ -94,7 +94,7 @@ func TestNewServer(t *testing.T) {
 				Name:    "post_status",
 				Method:  http.MethodPost,
 				Pattern: "/status",
-				Middlewares: []Middleware{
+				Middlewares: Middlewares{
 					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+2), true),
 					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+3), true),
 					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+4), true),

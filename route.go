@@ -27,7 +27,7 @@ type Route struct {
 	// Refer to github.com/go-chi/chi/v5 for details on defining patterns.
 	Pattern string
 	// Middlewares define the route specific middlewares to run after the application middlewares.
-	Middlewares []Middleware
+	Middlewares Middlewares
 	// HandlerFunc defines the handler function to call to handle the request.
 	HandlerFunc http.HandlerFunc
 }

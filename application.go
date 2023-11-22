@@ -9,7 +9,7 @@ type Application interface {
 	// Routes defines the routes an application supports.
 	Routes() []Route
 	// Middlewares defines the middlewares to run before any route specific middlewares.
-	Middlewares() []Middleware
+	Middlewares() Middlewares
 	// Error defines how the application responds to errors when handling a request.
 	Error(http.ResponseWriter, *http.Request, int, error)
 	// Respond defines how the application reponds to requests that are successful.

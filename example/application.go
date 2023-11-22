@@ -50,7 +50,7 @@ func (app *Application) Routes() []luci.Route {
 	}
 }
 
-func (app *Application) Middlewares() []luci.Middleware {
+func (app *Application) Middlewares() luci.Middlewares {
 	return nil
 }
 
