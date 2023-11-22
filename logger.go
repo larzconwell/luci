@@ -23,27 +23,44 @@ func withLogger(serverLogger *slog.Logger) Middleware {
 				panic(errors.New("luci: response writer has not been wrapped"))
 			}
 
+			requestAttrs := []any{slog.String("id", ID(req))}
+
+			name := RequestRoute(req).Name
+			if name != "" {
+				requestAttrs = append(requestAttrs, slog.String("route", name))
+			}
+
 			var varAttrs []any
 			for key, value := range Vars(req) {
 				varAttrs = append(varAttrs, slog.String(key, value))
 			}
 
+			if len(varAttrs) > 0 {
+				requestAttrs = append(requestAttrs, slog.Group("vars", varAttrs...))
+			}
+
 			logger := serverLogger.With(slog.Group(
 				"request",
-				slog.String("route", RequestRoute(req).Name),
-				slog.String("id", ID(req)),
-				slog.Group("vars", varAttrs...),
+				requestAttrs...,
 			))
 
 			newReq := req.WithContext(context.WithValue(req.Context(), loggerKey{}, logger))
 			next.ServeHTTP(wrw, newReq)
 
-			logger.With(slog.Group(
-				"response",
+			responseAttrs := []any{
 				slog.String("duration", Duration(req).String()),
 				slog.Int("status", wrw.status),
 				slog.Int64("length", wrw.length),
-				slog.String("type", wrw.Header().Get("Content-Type")),
+			}
+
+			contentType := wrw.Header().Get("Content-Type")
+			if contentType != "" {
+				responseAttrs = append(responseAttrs, slog.String("type", contentType))
+			}
+
+			logger.With(slog.Group(
+				"response",
+				responseAttrs...,
 			)).Info("Request")
 		})
 	}

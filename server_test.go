@@ -265,7 +265,7 @@ func TestNewServer(t *testing.T) {
 		assert.Equal(t, http.StatusOK, recorder.Code)
 	})
 
-	t.Run("adds the current route middleware", func(t *testing.T) {
+	t.Run("adds the id middleware", func(t *testing.T) {
 		t.Parallel()
 
 		recorder := httptest.NewRecorder()
@@ -279,13 +279,7 @@ func TestNewServer(t *testing.T) {
 				Method:  http.MethodGet,
 				Pattern: "/status",
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
-					route := RequestRoute(req)
-
-					assert.Equal(t, "status", route.Name)
-					assert.Equal(t, http.MethodGet, route.Method)
-					assert.Equal(t, "/status", route.Pattern)
-					assert.Empty(t, route.Middlewares)
-					assert.NotNil(t, route.HandlerFunc)
+					assert.NotEmpty(t, ID(req))
 
 					rw.WriteHeader(http.StatusOK)
 				},
@@ -330,7 +324,7 @@ func TestNewServer(t *testing.T) {
 		assert.Equal(t, http.StatusOK, recorder.Code)
 	})
 
-	t.Run("adds the id middleware", func(t *testing.T) {
+	t.Run("adds the current route middleware", func(t *testing.T) {
 		t.Parallel()
 
 		recorder := httptest.NewRecorder()
@@ -344,7 +338,13 @@ func TestNewServer(t *testing.T) {
 				Method:  http.MethodGet,
 				Pattern: "/status",
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
-					assert.NotEmpty(t, ID(req))
+					route := RequestRoute(req)
+
+					assert.Equal(t, "status", route.Name)
+					assert.Equal(t, http.MethodGet, route.Method)
+					assert.Equal(t, "/status", route.Pattern)
+					assert.Empty(t, route.Middlewares)
+					assert.NotNil(t, route.HandlerFunc)
 
 					rw.WriteHeader(http.StatusOK)
 				},
@@ -402,7 +402,7 @@ func TestNewServer(t *testing.T) {
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
 			},
 		})
-		app.On("Error", recorder, mock.Anything, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
+		app.On("Error", mock.Anything, mock.Anything, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
 
 		server := NewServer(DefaultConfig, &app)
 		server.server.Handler.ServeHTTP(recorder, request)
@@ -426,7 +426,7 @@ func TestNewServer(t *testing.T) {
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
 			},
 		})
-		app.On("Error", recorder, mock.Anything, http.StatusNotFound, ErrNotFound)
+		app.On("Error", mock.Anything, mock.Anything, http.StatusNotFound, ErrNotFound)
 
 		server := NewServer(DefaultConfig, &app)
 		server.server.Handler.ServeHTTP(recorder, request)
