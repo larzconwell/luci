@@ -44,16 +44,16 @@ func NewServer(config Config, app Application) *Server {
 	routesByName := make(map[string]Route, len(routes))
 	for _, route := range routes {
 		if route.Name == "" {
-			panic("luci: route must have a name")
+			panic(errors.New("luci: route must have a name"))
 		}
 
 		_, ok := routesByName[route.Name]
 		if ok {
-			panic("luci: routes must have unique names")
+			panic(fmt.Errorf(`luci: route "%s" already exists`, route.Name))
 		}
 
 		if route.HandlerFunc == nil {
-			panic("luci: route must have a handler")
+			panic(fmt.Errorf(`luci: route "%s" must have a handler`, route.Name))
 		}
 
 		router := mux.With(
