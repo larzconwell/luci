@@ -9,10 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+func contextHasKey(ctx context.Context, key any) bool {
+	return ctx.Value(key) != nil
+}
 
 type TestApplication struct {
 	mock.Mock
@@ -39,7 +42,7 @@ func (ta *TestApplication) Respond(rw http.ResponseWriter, req *http.Request, va
 func TestNewServer(t *testing.T) {
 	t.Parallel()
 
-	t.Run("creates server", func(t *testing.T) {
+	t.Run("returns server", func(t *testing.T) {
 		t.Parallel()
 
 		var app TestApplication
@@ -62,85 +65,6 @@ func TestNewServer(t *testing.T) {
 		assert.NotNil(t, server.started)
 	})
 
-	t.Run("adds routes", func(t *testing.T) {
-		t.Parallel()
-
-		baseMiddlewareCount := 2
-
-		var app TestApplication
-		app.On("Middlewares").Return(Middlewares{
-			WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+1), true),
-		})
-		app.On("Routes").Return([]Route{
-			{
-				Name:    "all_status",
-				Pattern: "/status",
-				Middlewares: Middlewares{
-					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+2), true),
-				},
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
-			},
-			{
-				Name:    "get_status",
-				Method:  http.MethodGet,
-				Pattern: "/status",
-				Middlewares: Middlewares{
-					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+2), true),
-					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+3), true),
-				},
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
-			},
-			{
-				Name:    "post_status",
-				Method:  http.MethodPost,
-				Pattern: "/status",
-				Middlewares: Middlewares{
-					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+2), true),
-					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+3), true),
-					WithValue(fmt.Sprintf("middleware_%d", baseMiddlewareCount+4), true),
-				},
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
-			},
-		})
-
-		server := NewServer(DefaultConfig, &app)
-		mux, ok := server.server.Handler.(*chi.Mux)
-		assert.True(t, ok)
-
-		app.AssertExpectations(t)
-
-		var count int
-		var methods []string
-		err := chi.Walk(mux, func(method string, pattern string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
-			methods = append(methods, method)
-			assert.Equal(t, "/status", pattern)
-			assert.NotNil(t, handler)
-
-			switch method {
-			case http.MethodGet:
-				assert.Len(t, middlewares, baseMiddlewareCount+7)
-			case http.MethodPost:
-				assert.Len(t, middlewares, baseMiddlewareCount+8)
-			default:
-				assert.Len(t, middlewares, baseMiddlewareCount+6)
-			}
-
-			count++
-			return nil
-		})
-		assert.NoError(t, err)
-
-		assert.Greater(t, count, 2)
-		assert.Len(t, methods, count)
-		assert.Contains(t, methods, http.MethodGet)
-		assert.Contains(t, methods, http.MethodPost)
-
-		assert.Len(t, server.routes, 3)
-		assert.Contains(t, server.routes, "all_status")
-		assert.Contains(t, server.routes, "get_status")
-		assert.Contains(t, server.routes, "post_status")
-	})
-
 	t.Run("panics if route has no name", func(t *testing.T) {
 		t.Parallel()
 
@@ -154,7 +78,7 @@ func TestNewServer(t *testing.T) {
 			},
 		})
 
-		assert.Panics(t, func() {
+		assert.PanicsWithError(t, "luci: route must have a name", func() {
 			NewServer(DefaultConfig, &app)
 		})
 
@@ -181,7 +105,7 @@ func TestNewServer(t *testing.T) {
 			},
 		})
 
-		assert.Panics(t, func() {
+		assert.PanicsWithError(t, `luci: route "status" already exists`, func() {
 			NewServer(DefaultConfig, &app)
 		})
 
@@ -201,234 +125,178 @@ func TestNewServer(t *testing.T) {
 			},
 		})
 
-		assert.Panics(t, func() {
+		assert.PanicsWithError(t, `luci: route "status" must have a handler`, func() {
 			NewServer(DefaultConfig, &app)
 		})
 
 		app.AssertExpectations(t)
 	})
 
-	t.Run("adds the response writer middleware", func(t *testing.T) {
+	t.Run("add routes", func(t *testing.T) {
 		t.Parallel()
 
-		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		routeAsserts := func(t *testing.T, rw http.ResponseWriter, req *http.Request) {
+			assert.IsType(t, new(responseWriter), rw)
+
+			assert.True(t, contextHasKey(req.Context(), durationKey{}), "duration key")
+			assert.True(t, contextHasKey(req.Context(), idKey{}), "id key")
+			assert.True(t, contextHasKey(req.Context(), varsKey{}), "vars key")
+			assert.True(t, contextHasKey(req.Context(), requestRouteKey{}), "request route key")
+			assert.True(t, contextHasKey(req.Context(), loggerKey{}), "logger key")
+			assert.True(t, contextHasKey(req.Context(), "app_middleware"), "app key")
+			assert.True(t, contextHasKey(req.Context(), "route_middleware"), "route key")
+		}
 
 		var app TestApplication
-		app.On("Middlewares").Return(nil)
+		app.On("Middlewares").Return(Middlewares{
+			WithValue("app_middleware", true),
+		})
 		app.On("Routes").Return([]Route{
 			{
-				Name:    "status",
-				Method:  http.MethodGet,
+				Name:    "all_status",
 				Pattern: "/status",
+				Middlewares: Middlewares{
+					WithValue("route_middleware", true),
+				},
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
-					assert.IsType(t, new(responseWriter), rw)
+					routeAsserts(t, rw, req)
 
 					rw.WriteHeader(http.StatusOK)
 				},
 			},
-		})
-
-		server := NewServer(DefaultConfig, &app)
-		server.server.Handler.ServeHTTP(recorder, request)
-
-		app.AssertExpectations(t)
-		assert.Equal(t, http.StatusOK, recorder.Code)
-	})
-
-	t.Run("adds the duration middleware", func(t *testing.T) {
-		t.Parallel()
-
-		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
-
-		var app TestApplication
-		app.On("Middlewares").Return(nil)
-		app.On("Routes").Return([]Route{
 			{
-				Name:    "status",
+				Name:    "get_status",
 				Method:  http.MethodGet,
 				Pattern: "/status",
+				Middlewares: Middlewares{
+					WithValue("route_middleware", true),
+				},
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
-					<-time.After(time.Millisecond)
-					assert.Greater(t, Duration(req), time.Duration(0))
+					routeAsserts(t, rw, req)
 
-					rw.WriteHeader(http.StatusOK)
+					rw.WriteHeader(http.StatusCreated)
 				},
 			},
-		})
-
-		server := NewServer(DefaultConfig, &app)
-		server.server.Handler.ServeHTTP(recorder, request)
-
-		app.AssertExpectations(t)
-		assert.Equal(t, http.StatusOK, recorder.Code)
-	})
-
-	t.Run("adds the id middleware", func(t *testing.T) {
-		t.Parallel()
-
-		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
-
-		var app TestApplication
-		app.On("Middlewares").Return(nil)
-		app.On("Routes").Return([]Route{
 			{
-				Name:    "status",
-				Method:  http.MethodGet,
-				Pattern: "/status",
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
-					assert.NotEmpty(t, ID(req))
-
-					rw.WriteHeader(http.StatusOK)
-				},
-			},
-		})
-
-		server := NewServer(DefaultConfig, &app)
-		server.server.Handler.ServeHTTP(recorder, request)
-
-		app.AssertExpectations(t)
-		assert.Equal(t, http.StatusOK, recorder.Code)
-	})
-
-	t.Run("adds the vars middleware", func(t *testing.T) {
-		t.Parallel()
-
-		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodPost, "/user/abc123/post/abc123", nil)
-
-		var app TestApplication
-		app.On("Middlewares").Return(nil)
-		app.On("Routes").Return([]Route{
-			{
-				Name:    "user_post",
+				Name:    "post_status",
 				Method:  http.MethodPost,
-				Pattern: "/user/{user}/post/{post}",
+				Pattern: "/status",
+				Middlewares: Middlewares{
+					WithValue("route_middleware", true),
+				},
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
-					assert.Equal(t, map[string]string{
-						"user": "abc123",
-						"post": "abc123",
-					}, Vars(req))
+					routeAsserts(t, rw, req)
 
-					rw.WriteHeader(http.StatusOK)
+					rw.WriteHeader(http.StatusAccepted)
 				},
 			},
 		})
 
 		server := NewServer(DefaultConfig, &app)
-		server.server.Handler.ServeHTTP(recorder, request)
-
 		app.AssertExpectations(t)
-		assert.Equal(t, http.StatusOK, recorder.Code)
+
+		methods := []string{
+			http.MethodConnect,
+			http.MethodDelete,
+			http.MethodGet,
+			http.MethodHead,
+			http.MethodOptions,
+			http.MethodPatch,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodTrace,
+		}
+
+		for _, method := range methods {
+			recorder := httptest.NewRecorder()
+			request := httptest.NewRequest(method, "/status", nil)
+
+			server.server.Handler.ServeHTTP(recorder, request)
+
+			expected := http.StatusOK
+			if method == http.MethodGet {
+				expected = http.StatusCreated
+			} else if method == http.MethodPost {
+				expected = http.StatusAccepted
+			}
+
+			assert.Equal(t, expected, recorder.Code, method)
+		}
 	})
 
-	t.Run("adds the current route middleware", func(t *testing.T) {
+	t.Run("handles method not allowed", func(t *testing.T) {
 		t.Parallel()
-
-		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
 
 		var app TestApplication
-		app.On("Middlewares").Return(nil)
+		app.On("Middlewares").Return(Middlewares{
+			WithValue("app_middleware", true),
+		})
 		app.On("Routes").Return([]Route{
 			{
-				Name:    "status",
-				Method:  http.MethodGet,
-				Pattern: "/status",
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
-					route := RequestRoute(req)
-
-					assert.Equal(t, "status", route.Name)
-					assert.Equal(t, http.MethodGet, route.Method)
-					assert.Equal(t, "/status", route.Pattern)
-					assert.Empty(t, route.Middlewares)
-					assert.NotNil(t, route.HandlerFunc)
-
-					rw.WriteHeader(http.StatusOK)
-				},
+				Name:        "get_status",
+				Method:      http.MethodGet,
+				Pattern:     "/status",
+				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
 			},
+		})
+		app.On("Error", mock.Anything, mock.Anything, http.StatusMethodNotAllowed, ErrMethodNotAllowed).Run(func(args mock.Arguments) {
+			rw, ok := args.Get(0).(http.ResponseWriter)
+			assert.True(t, ok, "1st argument should be a response writer")
+			req, ok := args.Get(1).(*http.Request)
+			assert.True(t, ok, "2nd argument should be a request")
+
+			assert.IsType(t, new(responseWriter), rw)
+
+			assert.True(t, contextHasKey(req.Context(), durationKey{}), "duration key")
+			assert.True(t, contextHasKey(req.Context(), idKey{}), "id key")
+			assert.True(t, contextHasKey(req.Context(), loggerKey{}), "logger key")
+			assert.True(t, contextHasKey(req.Context(), "app_middleware"), "app key")
 		})
 
 		server := NewServer(DefaultConfig, &app)
-		server.server.Handler.ServeHTTP(recorder, request)
-
-		app.AssertExpectations(t)
-		assert.Equal(t, http.StatusOK, recorder.Code)
-	})
-
-	t.Run("adds the logger middleware", func(t *testing.T) {
-		t.Parallel()
-
-		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
-
-		var app TestApplication
-		app.On("Middlewares").Return(nil)
-		app.On("Routes").Return([]Route{
-			{
-				Name:    "status",
-				Method:  http.MethodGet,
-				Pattern: "/status",
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
-					assert.NotNil(t, Logger(req))
-
-					rw.WriteHeader(http.StatusOK)
-				},
-			},
-		})
-
-		server := NewServer(DefaultConfig, &app)
-		server.server.Handler.ServeHTTP(recorder, request)
-
-		app.AssertExpectations(t)
-		assert.Equal(t, http.StatusOK, recorder.Code)
-	})
-
-	t.Run("sets the method not allowed handler", func(t *testing.T) {
-		t.Parallel()
 
 		recorder := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodPost, "/status", nil)
 
-		var app TestApplication
-		app.On("Middlewares").Return(nil)
-		app.On("Routes").Return([]Route{
-			{
-				Name:        "status",
-				Method:      http.MethodGet,
-				Pattern:     "/status",
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
-			},
-		})
-		app.On("Error", mock.Anything, mock.Anything, http.StatusMethodNotAllowed, ErrMethodNotAllowed)
-
-		server := NewServer(DefaultConfig, &app)
 		server.server.Handler.ServeHTTP(recorder, request)
 
 		app.AssertExpectations(t)
 	})
 
-	t.Run("sets the not found handler", func(t *testing.T) {
+	t.Run("handles not found", func(t *testing.T) {
 		t.Parallel()
 
-		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/nonexistent", nil)
-
 		var app TestApplication
-		app.On("Middlewares").Return(nil)
+		app.On("Middlewares").Return(Middlewares{
+			WithValue("app_middleware", true),
+		})
 		app.On("Routes").Return([]Route{
 			{
-				Name:        "status",
+				Name:        "get_status",
 				Method:      http.MethodGet,
 				Pattern:     "/status",
 				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
 			},
 		})
-		app.On("Error", mock.Anything, mock.Anything, http.StatusNotFound, ErrNotFound)
+		app.On("Error", mock.Anything, mock.Anything, http.StatusNotFound, ErrNotFound).Run(func(args mock.Arguments) {
+			rw, ok := args.Get(0).(http.ResponseWriter)
+			assert.True(t, ok, "1st argument should be a response writer")
+			req, ok := args.Get(1).(*http.Request)
+			assert.True(t, ok, "2nd argument should be a request")
+
+			assert.IsType(t, new(responseWriter), rw)
+
+			assert.True(t, contextHasKey(req.Context(), durationKey{}), "duration key")
+			assert.True(t, contextHasKey(req.Context(), idKey{}), "id key")
+			assert.True(t, contextHasKey(req.Context(), loggerKey{}), "logger key")
+			assert.True(t, contextHasKey(req.Context(), "app_middleware"), "app key")
+		})
 
 		server := NewServer(DefaultConfig, &app)
+
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodPost, "/notfound", nil)
+
 		server.server.Handler.ServeHTTP(recorder, request)
 
 		app.AssertExpectations(t)

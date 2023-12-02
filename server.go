@@ -28,7 +28,6 @@ type Server struct {
 func NewServer(config Config, app Application) *Server {
 	config = buildConfig(config)
 
-	logger := withLogger(config.Logger)
 	mux := chi.NewMux()
 	mux.Use(
 		withResponseWriter,
@@ -36,10 +35,15 @@ func NewServer(config Config, app Application) *Server {
 		withID(app.Error),
 	)
 
-	mux.MethodNotAllowed(logger(errorRespond(app.Error, http.StatusMethodNotAllowed, ErrMethodNotAllowed)).ServeHTTP)
-	mux.NotFound(logger(errorRespond(app.Error, http.StatusNotFound, ErrNotFound)).ServeHTTP)
-
 	middlewares := app.Middlewares()
+	logger := withLogger(config.Logger)
+
+	errorMiddlewares := Middlewares{logger}
+	errorMiddlewares = append(errorMiddlewares, middlewares...)
+
+	mux.MethodNotAllowed(errorMiddlewares.Handler(errorRespond(app.Error, http.StatusMethodNotAllowed, ErrMethodNotAllowed)).ServeHTTP)
+	mux.NotFound(errorMiddlewares.Handler(errorRespond(app.Error, http.StatusNotFound, ErrNotFound)).ServeHTTP)
+
 	routes := app.Routes()
 	routesByName := make(map[string]Route, len(routes))
 	for _, route := range routes {
