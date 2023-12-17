@@ -8,18 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
-
-type testPusherResponseWriter struct {
-	http.ResponseWriter
-	mock.Mock
-}
-
-func (tprw *testPusherResponseWriter) Push(target string, opts *http.PushOptions) error {
-	err, _ := tprw.MethodCalled("Push", target, opts).Get(0).(error)
-	return err
-}
 
 func TestResponseWriter(t *testing.T) {
 	t.Parallel()
@@ -27,7 +16,6 @@ func TestResponseWriter(t *testing.T) {
 
 	assert.Implements(t, (*io.ReaderFrom)(nil), rw)
 	assert.Implements(t, (*http.Flusher)(nil), rw)
-	assert.Implements(t, (*http.Pusher)(nil), rw)
 }
 
 func TestResponseWriterHeader(t *testing.T) {
@@ -184,42 +172,6 @@ func TestResponseWriterFlush(t *testing.T) {
 	wrw.Flush()
 
 	assert.True(t, rw.Flushed)
-}
-
-func TestResponseWriterPush(t *testing.T) {
-	t.Parallel()
-
-	t.Run("calls Push on the wrapped ResponseWriter if it implements http.Pusher", func(t *testing.T) {
-		t.Parallel()
-
-		header := make(http.Header)
-		header.Set("Content-Type", "application/json")
-
-		pushOptions := &http.PushOptions{
-			Method: http.MethodGet,
-			Header: header,
-		}
-
-		rw := &testPusherResponseWriter{
-			ResponseWriter: httptest.NewRecorder(),
-		}
-		rw.On("Push", "target", pushOptions).Return(nil)
-
-		wrw := &responseWriter{rw: rw}
-		err := wrw.Push("target", pushOptions)
-		assert.NoError(t, err)
-
-		rw.AssertExpectations(t)
-	})
-
-	t.Run("returns http.ErrNotSupported if the wrapped ResponseWriter does not implement http.Pusher", func(t *testing.T) {
-		t.Parallel()
-
-		rw := httptest.NewRecorder()
-		wrw := &responseWriter{rw: rw}
-
-		assert.Equal(t, http.ErrNotSupported, wrw.Push("target", nil))
-	})
 }
 
 func TestResponseWithResponseWriter(t *testing.T) {

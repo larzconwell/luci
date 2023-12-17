@@ -43,7 +43,7 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 func (rw *responseWriter) ReadFrom(r io.Reader) (int64, error) {
 	rw.finishHeader()
 
-	// Let io.Copy determine if the ResponseWriter is also a io.ReaderFrom.
+	// Let io.Copy determine if the underlying http.ResponseWriter is a io.ReaderFrom.
 	n, err := io.Copy(rw.rw, r)
 	rw.length += n
 	if err != nil {
@@ -58,20 +58,6 @@ func (rw *responseWriter) Flush() {
 	if ok {
 		flusher.Flush()
 	}
-}
-
-func (rw *responseWriter) Push(target string, opts *http.PushOptions) error {
-	pusher, ok := rw.rw.(http.Pusher)
-	if ok {
-		err := pusher.Push(target, opts)
-		if err != nil {
-			return fmt.Errorf("luci: push: %w", err)
-		}
-
-		return nil
-	}
-
-	return http.ErrNotSupported
 }
 
 func (rw *responseWriter) finishHeader() {
