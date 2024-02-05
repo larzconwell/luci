@@ -33,6 +33,7 @@ func NewServer(config Config, app Application) *Server {
 		withResponseWriter,
 		withDuration,
 		withID(app.Error),
+		withRecover(app.Error),
 	)
 
 	middlewares := app.Middlewares()
