@@ -102,7 +102,7 @@ func (route Route) Path(vals ...string) (string, error) {
 
 			val := vals[valIndex]
 			if !isWildcard && strings.Contains(val, "/") {
-				return "", fmt.Errorf(`luci: value for variable "%s" must not contain /`, name)
+				return "", fmt.Errorf(`luci: value for non-wildcard variable "%s" must not contain /`, name)
 			}
 
 			if matcherStr != "" {

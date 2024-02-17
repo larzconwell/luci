@@ -144,7 +144,7 @@ func TestRoutePath(t *testing.T) {
 		{
 			route:       Route{Pattern: "/user/{user}"},
 			vals:        []string{"luci/last"},
-			expectedErr: errors.New(`luci: value for variable "user" must not contain /`),
+			expectedErr: errors.New(`luci: value for non-wildcard variable "user" must not contain /`),
 		},
 		{
 			route:       Route{Pattern: "/invalid_regex/{:[}"},
