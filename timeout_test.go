@@ -218,6 +218,7 @@ func TestWithTimeout(t *testing.T) {
 
 		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			<-req.Context().Done()
+			<-time.After(time.Millisecond * 200)
 
 			_, err := rw.Write([]byte("data"))
 			assert.Equal(t, http.ErrHandlerTimeout, err)
@@ -246,6 +247,7 @@ func TestWithTimeout(t *testing.T) {
 
 		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			<-req.Context().Done()
+			<-time.After(time.Millisecond * 200)
 
 			_, err := rw.Write([]byte("data"))
 			assert.Equal(t, context.Canceled, err)
