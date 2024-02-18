@@ -1,7 +1,7 @@
 test:
 	go test ./...
 
-test-race:
+testrace test-race:
 	go test -race ./...
 
 lint:
