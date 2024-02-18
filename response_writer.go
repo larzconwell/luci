@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 )
 
 type responseWriter struct {
@@ -11,6 +12,7 @@ type responseWriter struct {
 	wroteHeader bool
 	status      int
 	length      int64
+	mu          sync.Mutex
 }
 
 func (rw *responseWriter) Header() http.Header {
@@ -18,18 +20,21 @@ func (rw *responseWriter) Header() http.Header {
 }
 
 func (rw *responseWriter) WriteHeader(status int) {
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+
 	if rw.wroteHeader {
 		return
 	}
 
-	rw.wroteHeader = true
-	rw.status = status
-
-	rw.rw.WriteHeader(status)
+	rw.lockedWriteHeader(status)
 }
 
 func (rw *responseWriter) Write(b []byte) (int, error) {
-	rw.finishHeader()
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+
+	rw.lockedFinishHeader()
 
 	n, err := rw.rw.Write(b)
 	rw.length += int64(n)
@@ -41,7 +46,10 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 }
 
 func (rw *responseWriter) ReadFrom(r io.Reader) (int64, error) {
-	rw.finishHeader()
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+
+	rw.lockedFinishHeader()
 
 	// Let io.Copy determine if the underlying http.ResponseWriter is a io.ReaderFrom.
 	n, err := io.Copy(rw.rw, r)
@@ -60,10 +68,24 @@ func (rw *responseWriter) Flush() {
 	}
 }
 
-func (rw *responseWriter) finishHeader() {
+func (rw *responseWriter) stats() (wroteHeader bool, status int, length int64) {
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+
+	return rw.wroteHeader, rw.status, rw.length
+}
+
+func (rw *responseWriter) lockedFinishHeader() {
 	if !rw.wroteHeader {
-		rw.WriteHeader(http.StatusOK)
+		rw.lockedWriteHeader(http.StatusOK)
 	}
+}
+
+func (rw *responseWriter) lockedWriteHeader(status int) {
+	rw.wroteHeader = true
+	rw.status = status
+
+	rw.rw.WriteHeader(status)
 }
 
 func withResponseWriter(next http.Handler) http.Handler {

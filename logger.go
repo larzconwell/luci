@@ -47,10 +47,11 @@ func withLogger(serverLogger *slog.Logger) Middleware {
 			newReq := req.WithContext(context.WithValue(req.Context(), loggerKey{}, logger))
 			next.ServeHTTP(wrw, newReq)
 
+			_, status, length := wrw.stats()
 			responseAttrs := []any{
 				slog.String("duration", Duration(req).String()),
-				slog.Int("status", wrw.status),
-				slog.Int64("length", wrw.length),
+				slog.Int("status", status),
+				slog.Int64("length", length),
 			}
 
 			contentType := wrw.Header().Get("Content-Type")
