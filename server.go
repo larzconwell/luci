@@ -29,21 +29,22 @@ func NewServer(config Config, app Application) *Server {
 	config = buildConfig(config)
 
 	mux := chi.NewMux()
-	mux.Use(
+
+	appMiddlewares := app.Middlewares()
+	badRequestMiddlewares := append(Middlewares{
 		withResponseWriter,
 		withDuration,
 		withID(app.Error),
+		withLogger(config.Logger),
 		withRecover(app.Error),
-	)
+	}, appMiddlewares...)
 
-	middlewares := app.Middlewares()
-	logger := withLogger(config.Logger)
-
-	errorMiddlewares := Middlewares{logger}
-	errorMiddlewares = append(errorMiddlewares, middlewares...)
-
-	mux.MethodNotAllowed(errorMiddlewares.Handler(errorRespond(app.Error, http.StatusMethodNotAllowed, ErrMethodNotAllowed)).ServeHTTP)
-	mux.NotFound(errorMiddlewares.Handler(errorRespond(app.Error, http.StatusNotFound, ErrNotFound)).ServeHTTP)
+	mux.MethodNotAllowed(badRequestMiddlewares.Handler(
+		errorRespond(app.Error, http.StatusMethodNotAllowed, ErrMethodNotAllowed),
+	).ServeHTTP)
+	mux.NotFound(badRequestMiddlewares.Handler(
+		errorRespond(app.Error, http.StatusNotFound, ErrNotFound),
+	).ServeHTTP)
 
 	routes := app.Routes()
 	routesByName := make(map[string]Route, len(routes))
@@ -62,15 +63,18 @@ func NewServer(config Config, app Application) *Server {
 		}
 
 		router := mux.With(
+			withResponseWriter,
+			withDuration,
+			withID(app.Error),
 			withVars,
 			WithValue(requestRouteKey{}, route),
-			logger,
+			withLogger(config.Logger),
+			withRecover(app.Error),
 		)
 
-		for _, middleware := range middlewares {
+		for _, middleware := range appMiddlewares {
 			router.Use(middleware)
 		}
-
 		for _, middleware := range route.Middlewares {
 			router.Use(middleware)
 		}
