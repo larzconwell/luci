@@ -10,7 +10,7 @@ type User struct {
 }
 
 type DB struct {
-	mu    sync.Mutex
+	mu    sync.RWMutex
 	users map[string]*User
 }
 
@@ -21,8 +21,8 @@ func NewDB(users map[string]*User) *DB {
 }
 
 func (db *DB) Get(key string) (User, bool) {
-	db.mu.Lock()
-	defer db.mu.Unlock()
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 
 	user, ok := db.users[key]
 	if ok {
