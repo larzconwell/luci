@@ -148,6 +148,7 @@ func TestNewServer(t *testing.T) {
 		}
 
 		var app TestApplication
+		app.On("Error", mock.Anything, mock.Anything, http.StatusServiceUnavailable, http.ErrHandlerTimeout)
 		app.On("Middlewares").Return(Middlewares{
 			WithValue("app_middleware", true),
 		})
@@ -190,10 +191,23 @@ func TestNewServer(t *testing.T) {
 					rw.WriteHeader(http.StatusAccepted)
 				},
 			},
+			{
+				Name:    "timeout_override",
+				Timeout: time.Millisecond * 100,
+				Pattern: "/timeout",
+				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
+					<-req.Context().Done()
+
+					duration := Duration(req)
+					assert.Greater(t, duration, time.Millisecond*50)
+					assert.Less(t, duration, time.Millisecond*200)
+				},
+			},
 		})
 
-		server := NewServer(testConfig, &app)
-		app.AssertExpectations(t)
+		config := testConfig
+		config.RouteTimeout = time.Second
+		server := NewServer(config, &app)
 
 		methods := []string{
 			http.MethodConnect,
@@ -222,6 +236,13 @@ func TestNewServer(t *testing.T) {
 
 			assert.Equal(t, expected, recorder.Code, method)
 		}
+
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, "/timeout", nil)
+
+		server.server.Handler.ServeHTTP(recorder, request)
+
+		app.AssertExpectations(t)
 	})
 
 	t.Run("handles method not allowed", func(t *testing.T) {

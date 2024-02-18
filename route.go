@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 )
 
 var (
@@ -20,6 +21,11 @@ type requestRouteKey struct{}
 type Route struct {
 	// Name is used to uniquely identify a route by name.
 	Name string
+	// Timeout defines the timeout for a request to a route.
+	// Once the timeout has been reached a timeout response is
+	// sent and the request context is cancelled. If Timeout is
+	// not set the default RouteTimeout will be used instead.
+	Timeout time.Duration
 	// Method may be optionally used to specify the method a route supports.
 	// If not set the route will be used for all methods.
 	Method string

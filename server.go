@@ -62,6 +62,11 @@ func NewServer(config Config, app Application) *Server {
 			panic(fmt.Errorf(`luci: route "%s" must have a handler`, route.Name))
 		}
 
+		timeout := route.Timeout
+		if timeout == 0 {
+			timeout = config.RouteTimeout
+		}
+
 		router := mux.With(
 			withResponseWriter,
 			withDuration,
@@ -69,7 +74,7 @@ func NewServer(config Config, app Application) *Server {
 			withVars,
 			WithValue(requestRouteKey{}, route),
 			withLogger(config.Logger),
-			withTimeout(app.Error, config.RouteTimeout),
+			withTimeout(app.Error, timeout),
 			withRecover(app.Error),
 		)
 
