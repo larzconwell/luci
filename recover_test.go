@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -77,7 +76,7 @@ func TestWithRecover(t *testing.T) {
 
 		middlewares := Middlewares{
 			withResponseWriter,
-			withLogger(slog.Default()),
+			withLogger(noopLogger),
 			withRecover(errorHandler),
 		}
 

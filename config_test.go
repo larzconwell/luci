@@ -1,8 +1,6 @@
 package luci
 
 import (
-	"log/slog"
-	"os"
 	"testing"
 	"time"
 
@@ -59,13 +57,12 @@ func TestBuildConfig(t *testing.T) {
 			Logger:            DefaultConfig.Logger,
 		}, config)
 
-		logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-		config = buildConfig(Config{Logger: logger})
+		config = buildConfig(Config{Logger: noopLogger})
 		assert.Equal(t, Config{
 			Address:           DefaultConfig.Address,
 			ReadHeaderTimeout: DefaultConfig.ReadHeaderTimeout,
 			ShutdownTimeout:   DefaultConfig.ShutdownTimeout,
-			Logger:            logger,
+			Logger:            noopLogger,
 		}, config)
 	})
 }

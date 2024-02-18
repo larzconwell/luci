@@ -49,16 +49,16 @@ func TestNewServer(t *testing.T) {
 		app.On("Middlewares").Return(nil)
 		app.On("Routes").Return(nil)
 
-		server := NewServer(DefaultConfig, &app)
+		server := NewServer(testConfig, &app)
 
 		app.AssertExpectations(t)
-		assert.Equal(t, DefaultConfig, server.config)
+		assert.Equal(t, testConfig, server.config)
 		assert.Equal(t, &app, server.app)
-		assert.Equal(t, DefaultConfig.Logger, server.logger)
+		assert.Equal(t, testConfig.Logger, server.logger)
 		assert.Equal(t, &http.Server{
-			Addr:              DefaultConfig.Address,
+			Addr:              testConfig.Address,
 			Handler:           server.server.Handler,
-			ReadHeaderTimeout: DefaultConfig.ReadHeaderTimeout,
+			ReadHeaderTimeout: testConfig.ReadHeaderTimeout,
 		}, server.server)
 		assert.NotNil(t, server.server.Handler)
 		assert.NotNil(t, server.routes)
@@ -79,7 +79,7 @@ func TestNewServer(t *testing.T) {
 		})
 
 		assert.PanicsWithError(t, "luci: route must have a name", func() {
-			NewServer(DefaultConfig, &app)
+			NewServer(testConfig, &app)
 		})
 
 		app.AssertExpectations(t)
@@ -106,7 +106,7 @@ func TestNewServer(t *testing.T) {
 		})
 
 		assert.PanicsWithError(t, `luci: route "status" already exists`, func() {
-			NewServer(DefaultConfig, &app)
+			NewServer(testConfig, &app)
 		})
 
 		app.AssertExpectations(t)
@@ -126,7 +126,7 @@ func TestNewServer(t *testing.T) {
 		})
 
 		assert.PanicsWithError(t, `luci: route "status" must have a handler`, func() {
-			NewServer(DefaultConfig, &app)
+			NewServer(testConfig, &app)
 		})
 
 		app.AssertExpectations(t)
@@ -192,7 +192,7 @@ func TestNewServer(t *testing.T) {
 			},
 		})
 
-		server := NewServer(DefaultConfig, &app)
+		server := NewServer(testConfig, &app)
 		app.AssertExpectations(t)
 
 		methods := []string{
@@ -253,7 +253,7 @@ func TestNewServer(t *testing.T) {
 			assert.True(t, contextHasKey(req.Context(), "app_middleware"), "app key")
 		})
 
-		server := NewServer(DefaultConfig, &app)
+		server := NewServer(testConfig, &app)
 
 		recorder := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodPost, "/status", nil)
@@ -292,7 +292,7 @@ func TestNewServer(t *testing.T) {
 			assert.True(t, contextHasKey(req.Context(), "app_middleware"), "app key")
 		})
 
-		server := NewServer(DefaultConfig, &app)
+		server := NewServer(testConfig, &app)
 
 		recorder := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodPost, "/notfound", nil)
@@ -322,7 +322,7 @@ func TestServerListenAndServe(t *testing.T) {
 			},
 		})
 
-		server := NewServer(Config{Address: ":0"}, &app)
+		server := NewServer(Config{Address: ":0", Logger: noopLogger}, &app)
 		ctx, cancel := context.WithCancel(context.Background())
 		listenErr := make(chan error, 1)
 
@@ -378,6 +378,7 @@ func TestServerListenAndServe(t *testing.T) {
 		server := NewServer(Config{
 			Address:         ":0",
 			ShutdownTimeout: time.Millisecond,
+			Logger:          noopLogger,
 		}, &app)
 		listenErr := make(chan error, 1)
 
@@ -420,7 +421,7 @@ func TestServerRoute(t *testing.T) {
 		},
 	})
 
-	server := NewServer(DefaultConfig, &app)
+	server := NewServer(testConfig, &app)
 
 	app.AssertExpectations(t)
 

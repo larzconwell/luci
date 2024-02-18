@@ -2,7 +2,6 @@ package luci
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,12 +12,10 @@ import (
 func TestLogger(t *testing.T) {
 	t.Parallel()
 
-	logger := slog.Default()
-
 	request := httptest.NewRequest(http.MethodGet, "/status", nil)
-	request = request.WithContext(context.WithValue(request.Context(), loggerKey{}, logger))
+	request = request.WithContext(context.WithValue(request.Context(), loggerKey{}, noopLogger))
 
-	assert.Same(t, logger, Logger(request))
+	assert.Same(t, noopLogger, Logger(request))
 }
 
 func TestWithLogger(t *testing.T) {
@@ -27,9 +24,7 @@ func TestWithLogger(t *testing.T) {
 	t.Run("adds logger to request context", func(t *testing.T) {
 		t.Parallel()
 
-		logger := slog.Default()
-
-		handler := withLogger(logger)(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := withLogger(noopLogger)(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			assert.NotNil(t, Logger(req))
 		}))
 
@@ -42,9 +37,7 @@ func TestWithLogger(t *testing.T) {
 	t.Run("panics if response writer has not been wrapped", func(t *testing.T) {
 		t.Parallel()
 
-		logger := slog.Default()
-
-		handler := withLogger(logger)(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := withLogger(noopLogger)(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			assert.Fail(t, "handler should not be called")
 		}))
 
