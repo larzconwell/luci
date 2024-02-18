@@ -69,7 +69,7 @@ func NewServer(config Config, app Application) *Server {
 			withVars,
 			WithValue(requestRouteKey{}, route),
 			withLogger(config.Logger),
-			withTimeout(app.Error, config.RequestTimeout),
+			withTimeout(app.Error, config.RouteTimeout),
 			withRecover(app.Error),
 		)
 

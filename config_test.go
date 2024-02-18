@@ -12,7 +12,7 @@ func TestDefaultConfig(t *testing.T) {
 
 	assert.Equal(t, Config{
 		Address:           ":http",
-		RequestTimeout:    time.Second,
+		RouteTimeout:      time.Second,
 		ReadHeaderTimeout: time.Second,
 		ShutdownTimeout:   5 * time.Second,
 		Logger:            DefaultConfig.Logger,
@@ -37,16 +37,16 @@ func TestBuildConfig(t *testing.T) {
 		config := buildConfig(Config{Address: ":0"})
 		assert.Equal(t, Config{
 			Address:           ":0",
-			RequestTimeout:    DefaultConfig.RequestTimeout,
+			RouteTimeout:      DefaultConfig.RouteTimeout,
 			ReadHeaderTimeout: DefaultConfig.ReadHeaderTimeout,
 			ShutdownTimeout:   DefaultConfig.ShutdownTimeout,
 			Logger:            DefaultConfig.Logger,
 		}, config)
 
-		config = buildConfig(Config{RequestTimeout: time.Hour})
+		config = buildConfig(Config{RouteTimeout: time.Hour})
 		assert.Equal(t, Config{
 			Address:           DefaultConfig.Address,
-			RequestTimeout:    time.Hour,
+			RouteTimeout:      time.Hour,
 			ReadHeaderTimeout: DefaultConfig.ReadHeaderTimeout,
 			ShutdownTimeout:   DefaultConfig.ShutdownTimeout,
 			Logger:            DefaultConfig.Logger,
@@ -55,7 +55,7 @@ func TestBuildConfig(t *testing.T) {
 		config = buildConfig(Config{ReadHeaderTimeout: time.Hour})
 		assert.Equal(t, Config{
 			Address:           DefaultConfig.Address,
-			RequestTimeout:    DefaultConfig.RequestTimeout,
+			RouteTimeout:      DefaultConfig.RouteTimeout,
 			ReadHeaderTimeout: time.Hour,
 			ShutdownTimeout:   DefaultConfig.ShutdownTimeout,
 			Logger:            DefaultConfig.Logger,
@@ -64,7 +64,7 @@ func TestBuildConfig(t *testing.T) {
 		config = buildConfig(Config{ShutdownTimeout: time.Hour})
 		assert.Equal(t, Config{
 			Address:           DefaultConfig.Address,
-			RequestTimeout:    DefaultConfig.RequestTimeout,
+			RouteTimeout:      DefaultConfig.RouteTimeout,
 			ReadHeaderTimeout: DefaultConfig.ReadHeaderTimeout,
 			ShutdownTimeout:   time.Hour,
 			Logger:            DefaultConfig.Logger,
@@ -73,7 +73,7 @@ func TestBuildConfig(t *testing.T) {
 		config = buildConfig(Config{Logger: noopLogger})
 		assert.Equal(t, Config{
 			Address:           DefaultConfig.Address,
-			RequestTimeout:    DefaultConfig.RequestTimeout,
+			RouteTimeout:      DefaultConfig.RouteTimeout,
 			ReadHeaderTimeout: DefaultConfig.ReadHeaderTimeout,
 			ShutdownTimeout:   DefaultConfig.ShutdownTimeout,
 			Logger:            noopLogger,
