@@ -3,6 +3,7 @@ package luci
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 )
 
@@ -24,6 +25,12 @@ func withRecover(errorHandler ErrorHandlerFunc) Middleware {
 				}
 
 				if errors.Is(err, http.ErrAbortHandler) {
+					return
+				}
+
+				resWriter, ok := rw.(*responseWriter)
+				if ok && resWriter.wroteHeader {
+					Logger(req).With(slog.Any("error", err)).Error("Unable to write recovered error response, response already written")
 					return
 				}
 
