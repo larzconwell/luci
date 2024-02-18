@@ -20,7 +20,7 @@ func withLogger(serverLogger *slog.Logger) Middleware {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			wrw, ok := rw.(*responseWriter)
 			if !ok {
-				panic(errors.New("luci: response writer has not been wrapped"))
+				panic(errors.New("luci: withLogger has not been called with responseWriter"))
 			}
 
 			requestAttrs := []any{slog.String("id", ID(req))}

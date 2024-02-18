@@ -34,7 +34,34 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	rw.mu.Lock()
 	defer rw.mu.Unlock()
 
-	rw.lockedFinishHeader()
+	return rw.lockedWrite(b)
+}
+
+func (rw *responseWriter) ReadFrom(r io.Reader) (int64, error) {
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+
+	return rw.lockedReadFrom(r)
+}
+
+func (rw *responseWriter) Flush() {
+	flusher, ok := rw.rw.(http.Flusher)
+	if ok {
+		flusher.Flush()
+	}
+}
+
+func (rw *responseWriter) lockedWriteHeader(status int) {
+	rw.wroteHeader = true
+	rw.status = status
+
+	rw.rw.WriteHeader(status)
+}
+
+func (rw *responseWriter) lockedWrite(b []byte) (int, error) {
+	if !rw.wroteHeader {
+		rw.lockedWriteHeader(http.StatusOK)
+	}
 
 	n, err := rw.rw.Write(b)
 	rw.length += int64(n)
@@ -45,11 +72,10 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	return n, nil
 }
 
-func (rw *responseWriter) ReadFrom(r io.Reader) (int64, error) {
-	rw.mu.Lock()
-	defer rw.mu.Unlock()
-
-	rw.lockedFinishHeader()
+func (rw *responseWriter) lockedReadFrom(r io.Reader) (int64, error) {
+	if !rw.wroteHeader {
+		rw.lockedWriteHeader(http.StatusOK)
+	}
 
 	// Let io.Copy determine if the underlying http.ResponseWriter is a io.ReaderFrom.
 	n, err := io.Copy(rw.rw, r)
@@ -61,31 +87,11 @@ func (rw *responseWriter) ReadFrom(r io.Reader) (int64, error) {
 	return n, nil
 }
 
-func (rw *responseWriter) Flush() {
-	flusher, ok := rw.rw.(http.Flusher)
-	if ok {
-		flusher.Flush()
-	}
-}
-
 func (rw *responseWriter) stats() (wroteHeader bool, status int, length int64) {
 	rw.mu.Lock()
 	defer rw.mu.Unlock()
 
 	return rw.wroteHeader, rw.status, rw.length
-}
-
-func (rw *responseWriter) lockedFinishHeader() {
-	if !rw.wroteHeader {
-		rw.lockedWriteHeader(http.StatusOK)
-	}
-}
-
-func (rw *responseWriter) lockedWriteHeader(status int) {
-	rw.wroteHeader = true
-	rw.status = status
-
-	rw.rw.WriteHeader(status)
 }
 
 func withResponseWriter(next http.Handler) http.Handler {

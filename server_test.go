@@ -136,7 +136,7 @@ func TestNewServer(t *testing.T) {
 		t.Parallel()
 
 		routeAsserts := func(t *testing.T, rw http.ResponseWriter, req *http.Request) {
-			assert.IsType(t, new(responseWriter), rw)
+			assert.IsType(t, new(timeoutResponseWriter), rw)
 
 			assert.True(t, contextHasKey(req.Context(), durationKey{}), "duration key")
 			assert.True(t, contextHasKey(req.Context(), idKey{}), "id key")

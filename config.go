@@ -9,6 +9,7 @@ var (
 	// DefaultConfig is the base configuration that's used when creating a server.
 	DefaultConfig = Config{
 		Address:           ":http",
+		RequestTimeout:    time.Second,
 		ReadHeaderTimeout: time.Second,
 		ShutdownTimeout:   5 * time.Second,
 		Logger:            slog.Default(),
@@ -20,6 +21,8 @@ var (
 type Config struct {
 	// Address defines the address to listen on.
 	Address string
+	// RequestTimeout defines the timeout for the request lifetime.
+	RequestTimeout time.Duration
 	// ReadHeaderTimeout defines the timeout to read request headers.
 	// See net/http.Server.ReadHeaderTimeout for details.
 	ReadHeaderTimeout time.Duration
@@ -35,6 +38,10 @@ func buildConfig(config Config) Config {
 
 	if config.Address != "" {
 		built.Address = config.Address
+	}
+
+	if config.RequestTimeout != 0 {
+		built.RequestTimeout = config.RequestTimeout
 	}
 
 	if config.ReadHeaderTimeout != 0 {

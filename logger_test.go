@@ -44,7 +44,7 @@ func TestWithLogger(t *testing.T) {
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/status", nil)
 
-		assert.Panics(t, func() {
+		assert.PanicsWithError(t, "luci: withLogger has not been called with responseWriter", func() {
 			handler.ServeHTTP(rw, req)
 		})
 	})

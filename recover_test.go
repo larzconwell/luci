@@ -2,7 +2,6 @@ package luci
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -70,7 +69,6 @@ func TestWithRecover(t *testing.T) {
 
 		var called bool
 		errorHandler := func(rw http.ResponseWriter, req *http.Request, status int, err error) {
-			fmt.Println("calling error handler")
 			called = true
 		}
 

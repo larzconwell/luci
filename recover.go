@@ -28,13 +28,17 @@ func withRecover(errorHandler ErrorHandlerFunc) Middleware {
 					return
 				}
 
-				wrw, ok := rw.(*responseWriter)
-				if ok {
-					wroteHeader, _, _ := wrw.stats()
-					if wroteHeader {
-						Logger(req).With(slog.Any("error", err)).Error("Unable to write recovered error response, response already written")
-						return
-					}
+				var wroteHeader bool
+				switch resWriter := rw.(type) {
+				case *responseWriter:
+					wroteHeader, _, _ = resWriter.stats()
+				case *timeoutResponseWriter:
+					wroteHeader, _, _ = resWriter.stats()
+				}
+
+				if wroteHeader {
+					Logger(req).With(slog.Any("error", err)).Error("Unable to write recovered error response, response already written")
+					return
 				}
 
 				errorHandler(rw, req, http.StatusInternalServerError, err)

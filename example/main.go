@@ -24,10 +24,9 @@ func run() error {
 	defer cancel()
 
 	config := luci.Config{
-		Address:           ":7879",
-		ReadHeaderTimeout: time.Second,
-		ShutdownTimeout:   time.Second,
-		Logger:            slog.New(slog.NewJSONHandler(os.Stdout, nil)),
+		Address:         ":7879",
+		ShutdownTimeout: time.Second,
+		Logger:          slog.New(slog.NewJSONHandler(os.Stdout, nil)),
 	}
 
 	app := NewApplication(config)
