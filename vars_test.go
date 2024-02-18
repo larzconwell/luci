@@ -16,10 +16,11 @@ func TestVars(t *testing.T) {
 	ctx.URLParams.Add("key_1", "value")
 	ctx.URLParams.Add("key_2", "value")
 
-	middlewares := chi.Chain(
+	middlewares := Middlewares{
 		WithValue(chi.RouteCtxKey, &ctx),
 		withVars,
-	)
+	}
+
 	handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		assert.Equal(t, map[string]string{
 			"key_1": "value",
@@ -36,10 +37,11 @@ func TestVar(t *testing.T) {
 	var ctx chi.Context
 	ctx.URLParams.Add("key", "value")
 
-	middlewares := chi.Chain(
+	middlewares := Middlewares{
 		WithValue(chi.RouteCtxKey, &ctx),
 		withVars,
-	)
+	}
+
 	handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		assert.Equal(t, "value", Var(req, "key"))
 		assert.Empty(t, Var(req, "nonexistent_key"))
