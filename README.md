@@ -1,4 +1,4 @@
-# `luci`
+![luci](https://raw.githubusercontent.com/larzconwell/luci/main/luci.svg)
 
 [![License](https://img.shields.io/badge/License-BSD_2--Clause_+_Patent-blue.svg)](https://github.com/larzconwell/luci/blob/main/LICENSE)
 [![Lint/Test](https://github.com/larzconwell/luci/actions/workflows/test-lint.yml/badge.svg)](https://github.com/larzconwell/luci/actions)
