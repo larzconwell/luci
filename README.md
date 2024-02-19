@@ -4,7 +4,7 @@
 [![Lint/Test](https://github.com/larzconwell/luci/actions/workflows/test-lint.yml/badge.svg)](https://github.com/larzconwell/luci/actions)
 [![Package Reference](https://pkg.go.dev/badge/github.com/larzconwell/luci.svg)](https://pkg.go.dev/github.com/larzconwell/luci)
 
-Go module to create web services quickly and painlessly.
+`luci` is a Go module to create web services quickly and painlessly.
 
 # Using `luci`
 
