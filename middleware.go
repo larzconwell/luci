@@ -36,7 +36,7 @@ func (middlewares Middlewares) Handler(next http.Handler) http.Handler {
 	return handler
 }
 
-// Handler creates a handler that runs the middlewares in the defined order
+// HandlerFunc creates a handler that runs the middlewares in the defined order
 // and then calls the given handler function.
 func (middlewares Middlewares) HandlerFunc(next http.HandlerFunc) http.Handler {
 	return middlewares.Handler(next)

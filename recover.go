@@ -17,6 +17,7 @@ func withRecover(errorHandler ErrorHandlerFunc) Middleware {
 				}
 
 				var err error
+
 				switch v := val.(type) {
 				case error:
 					err = v
@@ -29,6 +30,7 @@ func withRecover(errorHandler ErrorHandlerFunc) Middleware {
 				}
 
 				var wroteHeader bool
+
 				switch resWriter := rw.(type) {
 				case *responseWriter:
 					wroteHeader, _, _ = resWriter.stats()
@@ -37,7 +39,7 @@ func withRecover(errorHandler ErrorHandlerFunc) Middleware {
 				}
 
 				if wroteHeader {
-					Logger(req).With(slog.Any("error", err)).Error("Unable to write recovered error response, response already written")
+					Logger(req).With(slog.Any("error", err)).Error("unable to write recovered error response, response already written")
 					return
 				}
 

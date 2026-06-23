@@ -18,16 +18,17 @@ func TestWithTimeout(t *testing.T) {
 		t.Parallel()
 
 		var called bool
-		errorHandler := func(rw http.ResponseWriter, req *http.Request, status int, err error) {
+
+		errorHandler := func(_ http.ResponseWriter, _ *http.Request, _ int, _ error) {
 			called = true
 		}
 
-		handler := withTimeout(errorHandler, time.Millisecond*200)(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := withTimeout(errorHandler, time.Millisecond*200)(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusOK)
 		}))
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 
 		assert.PanicsWithError(t, "luci: withTimeout has not been called with responseWriter", func() {
 			handler.ServeHTTP(recorder, request)
@@ -40,7 +41,8 @@ func TestWithTimeout(t *testing.T) {
 		t.Parallel()
 
 		var called bool
-		errorHandler := func(rw http.ResponseWriter, req *http.Request, status int, err error) {
+
+		errorHandler := func(_ http.ResponseWriter, _ *http.Request, _ int, _ error) {
 			called = true
 		}
 
@@ -49,12 +51,12 @@ func TestWithTimeout(t *testing.T) {
 			withTimeout(errorHandler, time.Millisecond*200),
 		}
 
-		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := middlewares.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 			panic(io.ErrUnexpectedEOF)
 		})
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 
 		assert.PanicsWithValue(t, io.ErrUnexpectedEOF, func() {
 			handler.ServeHTTP(recorder, request)
@@ -67,7 +69,8 @@ func TestWithTimeout(t *testing.T) {
 		t.Parallel()
 
 		var called bool
-		errorHandler := func(rw http.ResponseWriter, req *http.Request, status int, err error) {
+
+		errorHandler := func(_ http.ResponseWriter, _ *http.Request, _ int, _ error) {
 			called = true
 		}
 
@@ -76,12 +79,12 @@ func TestWithTimeout(t *testing.T) {
 			withRecover(errorHandler),
 		}
 
-		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := middlewares.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 			panic(http.ErrAbortHandler)
 		})
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 
 		assert.NotPanics(t, func() {
 			handler.ServeHTTP(recorder, request)
@@ -94,7 +97,8 @@ func TestWithTimeout(t *testing.T) {
 		t.Parallel()
 
 		var called bool
-		errorHandler := func(rw http.ResponseWriter, req *http.Request, status int, err error) {
+
+		errorHandler := func(_ http.ResponseWriter, _ *http.Request, _ int, _ error) {
 			called = true
 		}
 
@@ -103,12 +107,12 @@ func TestWithTimeout(t *testing.T) {
 			withTimeout(errorHandler, time.Millisecond*200),
 		}
 
-		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusOK)
 		})
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 
 		handler.ServeHTTP(recorder, request)
 
@@ -120,7 +124,8 @@ func TestWithTimeout(t *testing.T) {
 		t.Parallel()
 
 		var called bool
-		errorHandler := func(rw http.ResponseWriter, req *http.Request, status int, err error) {
+
+		errorHandler := func(_ http.ResponseWriter, _ *http.Request, _ int, _ error) {
 			called = true
 		}
 
@@ -131,13 +136,13 @@ func TestWithTimeout(t *testing.T) {
 			withTimeout(errorHandler, timeout),
 		}
 
-		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusOK)
 			<-time.After(timeout * 2)
 		})
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 
 		handler.ServeHTTP(recorder, request)
 
@@ -148,7 +153,8 @@ func TestWithTimeout(t *testing.T) {
 		t.Parallel()
 
 		var called bool
-		errorHandler := func(rw http.ResponseWriter, req *http.Request, status int, err error) {
+
+		errorHandler := func(_ http.ResponseWriter, _ *http.Request, status int, err error) {
 			called = true
 
 			assert.Equal(t, http.StatusServiceUnavailable, status)
@@ -161,12 +167,12 @@ func TestWithTimeout(t *testing.T) {
 			withTimeout(errorHandler, timeout),
 		}
 
-		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := middlewares.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 			<-time.After(timeout * 2)
 		})
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 
 		handler.ServeHTTP(recorder, request)
 
@@ -177,7 +183,8 @@ func TestWithTimeout(t *testing.T) {
 		t.Parallel()
 
 		var called bool
-		errorHandler := func(rw http.ResponseWriter, req *http.Request, status int, err error) {
+
+		errorHandler := func(_ http.ResponseWriter, _ *http.Request, _ int, _ error) {
 			called = true
 		}
 
@@ -187,7 +194,7 @@ func TestWithTimeout(t *testing.T) {
 			withTimeout(errorHandler, timeout),
 		}
 
-		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := middlewares.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 			select {
 			case <-req.Context().Done():
 			case <-time.After(timeout * 2):
@@ -196,7 +203,7 @@ func TestWithTimeout(t *testing.T) {
 		})
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 
 		handler.ServeHTTP(recorder, request)
 
@@ -207,7 +214,8 @@ func TestWithTimeout(t *testing.T) {
 		t.Parallel()
 
 		var called bool
-		errorHandler := func(rw http.ResponseWriter, req *http.Request, status int, err error) {
+
+		errorHandler := func(_ http.ResponseWriter, _ *http.Request, _ int, _ error) {
 			called = true
 		}
 
@@ -225,7 +233,7 @@ func TestWithTimeout(t *testing.T) {
 		})
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 
 		handler.ServeHTTP(recorder, request)
 
@@ -236,7 +244,8 @@ func TestWithTimeout(t *testing.T) {
 		t.Parallel()
 
 		var called bool
-		errorHandler := func(rw http.ResponseWriter, req *http.Request, status int, err error) {
+
+		errorHandler := func(_ http.ResponseWriter, _ *http.Request, _ int, _ error) {
 			called = true
 		}
 
@@ -254,7 +263,7 @@ func TestWithTimeout(t *testing.T) {
 		})
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 
 		ctx, cancel := context.WithCancel(request.Context())
 		cancel()

@@ -1,3 +1,4 @@
+// Package main is an example project utilizing luci to build an HTTP server with CRUD actions on user objects.
 package main
 
 import (
@@ -23,12 +24,11 @@ func run() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	config := luci.Config{
+	app := NewApplication(luci.Config{
 		Address:         ":7879",
 		ShutdownTimeout: time.Second,
 		Logger:          slog.New(slog.NewJSONHandler(os.Stdout, nil)),
-	}
+	})
 
-	app := NewApplication(config)
 	return app.ListenAndServe(ctx)
 }

@@ -20,7 +20,7 @@ See [the example project](https://github.com/larzconwell/luci/tree/main/example)
 
 ## Prerequisites
 - Go 1.26
-- `golangci-lint` 1.55
+- `golangci-lint` 2.12
 
 ## Setting up hooks
 ```shell

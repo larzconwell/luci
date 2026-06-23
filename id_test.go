@@ -15,7 +15,7 @@ func TestID(t *testing.T) {
 
 	id := "luci"
 
-	request := httptest.NewRequest(http.MethodGet, "/status", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 	request = request.WithContext(context.WithValue(request.Context(), idKey{}, id))
 
 	assert.Equal(t, id, ID(request))
@@ -27,12 +27,12 @@ func TestWithID(t *testing.T) {
 	t.Run("sets id to Request-Id in request header", func(t *testing.T) {
 		t.Parallel()
 
-		handler := withID(nil)(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := withID(nil)(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 			assert.Equal(t, "luci", ID(req))
 		}))
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 		request.Header.Set("Request-Id", "luci")
 
 		handler.ServeHTTP(recorder, request)
@@ -41,12 +41,12 @@ func TestWithID(t *testing.T) {
 	t.Run("sets id to X-Request-Id in request header", func(t *testing.T) {
 		t.Parallel()
 
-		handler := withID(nil)(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := withID(nil)(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 			assert.Equal(t, "luci", ID(req))
 		}))
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 		request.Header.Set("X-Request-Id", "luci")
 
 		handler.ServeHTTP(recorder, request)
@@ -55,12 +55,12 @@ func TestWithID(t *testing.T) {
 	t.Run("sets id to Request-Id over X-Request-Id if both exist in request header", func(t *testing.T) {
 		t.Parallel()
 
-		handler := withID(nil)(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := withID(nil)(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 			assert.Equal(t, "luci", ID(req))
 		}))
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 		request.Header.Set("Request-Id", "luci")
 		request.Header.Set("X-Request-Id", "foobar")
 
@@ -70,7 +70,7 @@ func TestWithID(t *testing.T) {
 	t.Run("sets id to valid ULID if no id is provided", func(t *testing.T) {
 		t.Parallel()
 
-		handler := withID(nil)(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := withID(nil)(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 			id := ID(req)
 			assert.NotEmpty(t, id)
 
@@ -79,18 +79,18 @@ func TestWithID(t *testing.T) {
 		}))
 
 		recorder := httptest.NewRecorder()
-		handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/status", nil))
+		handler.ServeHTTP(recorder, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil))
 	})
 
 	t.Run("adds Request-Id and X-Request-Id to response header", func(t *testing.T) {
 		t.Parallel()
 
-		handler := withID(nil)(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := withID(nil)(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusOK)
 		}))
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 		request.Header.Set("Request-Id", "luci")
 
 		handler.ServeHTTP(recorder, request)

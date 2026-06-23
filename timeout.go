@@ -55,8 +55,8 @@ func withTimeout(errorHandler ErrorHandlerFunc, timeout time.Duration) Middlewar
 			if !ok {
 				panic(errors.New("luci: withTimeout has not been called with responseWriter"))
 			}
-			trw := &timeoutResponseWriter{responseWriter: wrw}
 
+			trw := &timeoutResponseWriter{responseWriter: wrw}
 			done := make(chan struct{})
 			panicChan := make(chan any, 1)
 
@@ -92,7 +92,7 @@ func withTimeout(errorHandler ErrorHandlerFunc, timeout time.Duration) Middlewar
 
 				wroteHeader, _, _ := trw.stats()
 				if wroteHeader {
-					Logger(req).With(slog.Any("error", err)).Error("Unable to write timeout error response, response already written")
+					Logger(req).With(slog.Any("error", err)).Error("unable to write timeout error response, response already written")
 					return
 				}
 

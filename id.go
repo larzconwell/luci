@@ -32,6 +32,7 @@ func withID(errorHandler ErrorHandlerFunc) Middleware {
 			key := "Request-Id"
 
 			xID := req.Header.Get(xKey)
+
 			id := req.Header.Get(key)
 			if id == "" {
 				id = xID
@@ -39,6 +40,7 @@ func withID(errorHandler ErrorHandlerFunc) Middleware {
 
 			if id == "" {
 				now := ulid.Now()
+
 				ulid, err := ulid.New(now, entropy)
 				if err != nil {
 					errorHandler(rw, req, http.StatusInternalServerError, fmt.Errorf("luci: id generate: %w", err))

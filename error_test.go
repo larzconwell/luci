@@ -12,12 +12,13 @@ func TestErrorRespond(t *testing.T) {
 	t.Parallel()
 
 	var mock mock.Mock
+
 	errorHandler := func(rw http.ResponseWriter, req *http.Request, status int, err error) {
 		mock.MethodCalled("handler", rw, req, status, err)
 	}
 
 	recorder := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodGet, "/status", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 	status := http.StatusNotFound
 	err := ErrNotFound
 	mock.On("handler", recorder, request, status, err)

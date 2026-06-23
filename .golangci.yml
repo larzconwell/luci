@@ -1,48 +1,101 @@
-linters:
-  disable-all: true
-  enable:
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
-    - asasalint
-    - bodyclose
-    - containedctx
-    - dogsled
-    - durationcheck
-    - errname
-    - errorlint
-    - exhaustive
-    - exportloopref
-    - forcetypeassert
-    - gocheckcompilerdirectives
-    - gochecknoinits
-    - godot
-    - goimports
-    - goprintffuncname
-    - gosec
-    - ireturn
-    - makezero
-    - mirror
-    - nakedret
-    - nestif
-    - noctx
-    - nosprintfhostport
-    - paralleltest
-    - prealloc
-    - revive
-    - testableexamples
-    - tparallel
-    - unconvert
-    - unparam
-    - usestdlibvars
-    - wastedassign
-    - wrapcheck
+version: "2"
 
-linters-settings:
-  exhaustive:
-    check:
-      - switch
-      - map
+run:
+  timeout: "1m"
+
+formatters:
+  enable:
+    - "goimports"
+
+linters:
+  default: "none"
+  enable:
+    - "asasalint"
+    - "asciicheck"
+    - "bidichk"
+    - "bodyclose"
+    - "canonicalheader"
+    - "containedctx"
+    - "contextcheck"
+    - "copyloopvar"
+    - "dogsled"
+    - "durationcheck"
+    - "errcheck"
+    - "errname"
+    - "errorlint"
+    - "exhaustive"
+    - "fatcontext"
+    - "forcetypeassert"
+    - "funcorder"
+    - "gocheckcompilerdirectives"
+    - "gochecknoinits"
+    - "godot"
+    - "goprintffuncname"
+    - "gosec"
+    - "govet"
+    - "iface"
+    - "inamedparam"
+    - "ineffassign"
+    - "intrange"
+    - "iotamixing"
+    - "ireturn"
+    - "makezero"
+    - "mirror"
+    - "modernize"
+    - "nakedret"
+    - "nestif"
+    - "noctx"
+    - "noinlineerr"
+    - "nolintlint"
+    - "nonamedreturns"
+    - "nosprintfhostport"
+    - "paralleltest"
+    - "perfsprint"
+    - "prealloc"
+    - "predeclared"
+    - "promlinter"
+    - "protogetter"
+    - "reassign"
+    - "recvcheck"
+    - "revive"
+    - "rowserrcheck"
+    - "sloglint"
+    - "sqlclosecheck"
+    - "staticcheck"
+    - "testableexamples"
+    - "thelper"
+    - "tparallel"
+    - "unconvert"
+    - "unparam"
+    - "unused"
+    - "usestdlibvars"
+    - "whitespace"
+    - "wrapcheck"
+    - "wsl_v5"
+  settings:
+    bodyclose:
+      check-consumption: true
+    copyloopvar:
+      check-alias: true
+    exhaustive:
+      check:
+        - "switch"
+        - "map"
+      default-signifies-exhaustive: true
+    funcorder:
+      function: true
+    iface:
+      enable:
+        - "identical"
+        - "unused"
+        - "unexported"
+    nakedret:
+      max-func-lines: 0
+    paralleltest:
+      check-cleanup: true
+    sloglint:
+      static-msg: true
+      msg-style: "lowercased"
+      attr-only: true
+      args-on-sep-lines: true
+      key-naming-case: "snake"

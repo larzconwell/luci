@@ -28,8 +28,8 @@ func NewApplication(config luci.Config) *Application {
 			"abc123": {Key: "abc123", Name: "luci"},
 		}),
 	}
-
 	app.server = luci.NewServer(config, app)
+
 	return app
 }
 
@@ -67,23 +67,21 @@ func (app *Application) Error(rw http.ResponseWriter, req *http.Request, status 
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(status)
 
-	encoder := json.NewEncoder(rw)
-	encodeErr := encoder.Encode(value)
+	encodeErr := json.NewEncoder(rw).Encode(value)
 	if encodeErr != nil && !errors.Is(encodeErr, http.ErrHandlerTimeout) && !errors.Is(encodeErr, context.Canceled) {
 		luci.Logger(req).With(
 			slog.Any("error", encodeErr),
 			slog.Any("source_error", err),
-		).Error("Failed to write response")
+		).Error("failed to write response")
 	}
 }
 
 func (app *Application) Respond(rw http.ResponseWriter, req *http.Request, value any) {
 	rw.Header().Set("Content-Type", "application/json")
 
-	encoder := json.NewEncoder(rw)
-	err := encoder.Encode(value)
+	err := json.NewEncoder(rw).Encode(value)
 	if err != nil && !errors.Is(err, http.ErrHandlerTimeout) && !errors.Is(err, context.Canceled) {
-		luci.Logger(req).With(slog.Any("error", err)).Error("Failed to write response")
+		luci.Logger(req).With(slog.Any("error", err)).Error("failed to write response")
 	}
 }
 
@@ -94,6 +92,7 @@ func (app *Application) Status(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (app *Application) ShowUser(rw http.ResponseWriter, req *http.Request) {
+	updateUserRoute, _ := app.server.Route(UpdateUser)
 	key := luci.Var(req, "key")
 
 	user, ok := app.db.Get(key)
@@ -102,7 +101,6 @@ func (app *Application) ShowUser(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	updateUserRoute, _ := app.server.Route(UpdateUser)
 	updateUserPath, err := updateUserRoute.Path(key)
 	if err != nil {
 		app.Error(rw, req, http.StatusInternalServerError, err)
@@ -119,6 +117,7 @@ func (app *Application) ShowUser(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (app *Application) UpdateUser(rw http.ResponseWriter, req *http.Request) {
+	showUserRoute, _ := app.server.Route(ShowUser)
 	key := luci.Var(req, "key")
 
 	name := req.FormValue("name")
@@ -129,7 +128,6 @@ func (app *Application) UpdateUser(rw http.ResponseWriter, req *http.Request) {
 
 	user := app.db.Update(key, name)
 
-	showUserRoute, _ := app.server.Route(ShowUser)
 	showUserPath, err := showUserRoute.Path(key)
 	if err != nil {
 		app.Error(rw, req, http.StatusInternalServerError, err)

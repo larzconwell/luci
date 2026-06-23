@@ -44,5 +44,6 @@ func (db *DB) Update(key, name string) User {
 
 	user.Key = key
 	user.Name = name
+
 	return *user
 }

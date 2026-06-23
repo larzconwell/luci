@@ -12,8 +12,8 @@ import (
 
 func TestResponseWriter(t *testing.T) {
 	t.Parallel()
-	rw := new(responseWriter)
 
+	rw := new(responseWriter)
 	assert.Implements(t, (*io.ReaderFrom)(nil), rw)
 	assert.Implements(t, (*http.Flusher)(nil), rw)
 }
@@ -177,11 +177,11 @@ func TestResponseWriterFlush(t *testing.T) {
 func TestResponseWithResponseWriter(t *testing.T) {
 	t.Parallel()
 
-	handler := withResponseWriter(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	handler := withResponseWriter(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 		assert.IsType(t, new(responseWriter), rw)
 	}))
 
-	handler.ServeHTTP(nil, httptest.NewRequest(http.MethodGet, "/status", nil))
+	handler.ServeHTTP(nil, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil))
 
 	rw := httptest.NewRecorder()
 	wrw := &responseWriter{rw: rw}

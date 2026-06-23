@@ -14,9 +14,10 @@ func TestDuration(t *testing.T) {
 	t.Parallel()
 
 	start := time.Now()
+
 	<-time.After(50 * time.Millisecond)
 
-	request := httptest.NewRequest(http.MethodGet, "/status", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 	request = request.WithContext(context.WithValue(request.Context(), durationKey{}, start))
 
 	assert.GreaterOrEqual(t, Duration(request), 50*time.Millisecond)

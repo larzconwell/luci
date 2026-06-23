@@ -48,6 +48,7 @@ func NewServer(config Config, app Application) *Server {
 
 	routes := app.Routes()
 	routesByName := make(map[string]Route, len(routes))
+
 	for _, route := range routes {
 		if route.Name == "" {
 			panic(errors.New("luci: route must have a name"))
@@ -81,6 +82,7 @@ func NewServer(config Config, app Application) *Server {
 		for _, middleware := range appMiddlewares {
 			router.Use(middleware)
 		}
+
 		for _, middleware := range route.Middlewares {
 			router.Use(middleware)
 		}
@@ -126,9 +128,15 @@ func (server *Server) ListenAndServe(ctx context.Context) error {
 	close(server.started)
 
 	logger := server.logger.WithGroup("server").With(slog.String("address", server.address))
-	logger.Info("Server started")
+	logger.Info("server started")
 
 	done := make(chan error, 1)
+
+	// Disable context checking, we intentionally use a background context here to
+	// build the shutdown context, the top level context tells when to start the
+	// shutdown but does not include the shutdown itself.
+	//nolint:contextcheck
+	//gosec:disable G118
 	go func() {
 		select {
 		case <-done:
@@ -138,7 +146,7 @@ func (server *Server) ListenAndServe(ctx context.Context) error {
 
 		logger.With(
 			slog.String("timeout", server.config.ShutdownTimeout.String()),
-		).Info("Server closing")
+		).Info("server closing")
 
 		ctx, cancel := context.WithTimeout(context.Background(), server.config.ShutdownTimeout)
 		defer cancel()
@@ -153,7 +161,8 @@ func (server *Server) ListenAndServe(ctx context.Context) error {
 	}
 
 	err = <-done
-	logger.Info("Server closed")
+
+	logger.Info("server closed")
 
 	if errors.Is(err, context.DeadlineExceeded) {
 		return ErrForcedShutdown

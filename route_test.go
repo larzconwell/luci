@@ -19,7 +19,7 @@ func TestRequestRoute(t *testing.T) {
 		Pattern: "/status",
 	}
 
-	request := httptest.NewRequest(http.MethodGet, "/status", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 	request = request.WithContext(context.WithValue(request.Context(), requestRouteKey{}, route))
 
 	assert.Equal(t, route, RequestRoute(request))
@@ -163,6 +163,7 @@ func TestRoutePath(t *testing.T) {
 
 		if test.expectedErr != nil {
 			assert.Error(t, err, idx)
+
 			if err != nil {
 				assert.Equal(t, test.expectedErr.Error(), err.Error(), idx)
 			}

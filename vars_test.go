@@ -21,14 +21,14 @@ func TestVars(t *testing.T) {
 		withVars,
 	}
 
-	handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	handler := middlewares.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 		assert.Equal(t, map[string]string{
 			"key_1": "value",
 			"key_2": "value",
 		}, Vars(req))
 	})
 
-	handler.ServeHTTP(nil, httptest.NewRequest(http.MethodGet, "/status", nil))
+	handler.ServeHTTP(nil, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil))
 }
 
 func TestVar(t *testing.T) {
@@ -42,10 +42,10 @@ func TestVar(t *testing.T) {
 		withVars,
 	}
 
-	handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	handler := middlewares.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 		assert.Equal(t, "value", Var(req, "key"))
 		assert.Empty(t, Var(req, "nonexistent_key"))
 	})
 
-	handler.ServeHTTP(nil, httptest.NewRequest(http.MethodGet, "/status", nil))
+	handler.ServeHTTP(nil, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil))
 }

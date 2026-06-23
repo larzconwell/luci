@@ -17,7 +17,8 @@ func TestWithRecover(t *testing.T) {
 		t.Parallel()
 
 		var called bool
-		errorHandler := func(rw http.ResponseWriter, req *http.Request, status int, err error) {
+
+		errorHandler := func(_ http.ResponseWriter, _ *http.Request, _ int, _ error) {
 			called = true
 		}
 
@@ -26,12 +27,12 @@ func TestWithRecover(t *testing.T) {
 			withRecover(errorHandler),
 		}
 
-		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusOK)
 		})
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 
 		handler.ServeHTTP(recorder, request)
 
@@ -43,7 +44,8 @@ func TestWithRecover(t *testing.T) {
 		t.Parallel()
 
 		var called bool
-		errorHandler := func(rw http.ResponseWriter, req *http.Request, status int, err error) {
+
+		errorHandler := func(_ http.ResponseWriter, _ *http.Request, _ int, _ error) {
 			called = true
 		}
 
@@ -52,12 +54,12 @@ func TestWithRecover(t *testing.T) {
 			withRecover(errorHandler),
 		}
 
-		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := middlewares.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 			panic(http.ErrAbortHandler)
 		})
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 
 		handler.ServeHTTP(recorder, request)
 
@@ -68,7 +70,8 @@ func TestWithRecover(t *testing.T) {
 		t.Parallel()
 
 		var called bool
-		errorHandler := func(rw http.ResponseWriter, req *http.Request, status int, err error) {
+
+		errorHandler := func(_ http.ResponseWriter, _ *http.Request, _ int, _ error) {
 			called = true
 		}
 
@@ -78,13 +81,13 @@ func TestWithRecover(t *testing.T) {
 			withRecover(errorHandler),
 		}
 
-		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusOK)
 			panic(io.ErrUnexpectedEOF)
 		})
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 
 		handler.ServeHTTP(recorder, request)
 
@@ -95,7 +98,8 @@ func TestWithRecover(t *testing.T) {
 		t.Parallel()
 
 		var called bool
-		errorHandler := func(rw http.ResponseWriter, req *http.Request, status int, err error) {
+
+		errorHandler := func(_ http.ResponseWriter, _ *http.Request, status int, err error) {
 			called = true
 
 			assert.Equal(t, http.StatusInternalServerError, status)
@@ -107,12 +111,12 @@ func TestWithRecover(t *testing.T) {
 			withRecover(errorHandler),
 		}
 
-		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := middlewares.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 			panic(io.ErrUnexpectedEOF)
 		})
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 
 		handler.ServeHTTP(recorder, request)
 
@@ -123,7 +127,8 @@ func TestWithRecover(t *testing.T) {
 		t.Parallel()
 
 		var called bool
-		errorHandler := func(rw http.ResponseWriter, req *http.Request, status int, err error) {
+
+		errorHandler := func(_ http.ResponseWriter, _ *http.Request, status int, err error) {
 			called = true
 
 			assert.Equal(t, http.StatusInternalServerError, status)
@@ -135,12 +140,12 @@ func TestWithRecover(t *testing.T) {
 			withRecover(errorHandler),
 		}
 
-		handler := middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		handler := middlewares.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 			panic(5)
 		})
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 
 		handler.ServeHTTP(recorder, request)
 

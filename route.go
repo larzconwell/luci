@@ -56,19 +56,24 @@ func (route Route) Path(vals ...string) (string, error) {
 	if route.Pattern == "" {
 		return "", errors.New("luci: route pattern must not be empty")
 	}
+
 	if route.Pattern[0] != '/' {
 		return "", errors.New("luci: route pattern must begin with /")
 	}
 
-	var valIndex int
-	var varCount int
-	var builder strings.Builder
-	pattern := []byte(route.Pattern)[1:]
-	parts := bytes.Split(pattern, []byte{'/'})
+	var (
+		valIndex int
+		varCount int
+		builder  strings.Builder
+	)
 
-	for _, part := range parts {
-		_ = builder.WriteByte('/')
+	pattern := []byte(route.Pattern)[1:]
+	parts := bytes.SplitSeq(pattern, []byte{'/'})
+
+	for part := range parts {
 		var value string
+
+		_ = builder.WriteByte('/')
 
 		for len(part) != 0 {
 			start := bytes.IndexAny(part, "{*")
@@ -80,8 +85,11 @@ func (route Route) Path(vals ...string) (string, error) {
 			isWildcard := part[start] == '*'
 			end := start
 
-			var name string
-			var matcherStr string
+			var (
+				name       string
+				matcherStr string
+			)
+
 			if !isWildcard {
 				end = bytes.IndexByte(part, '}')
 				if end == -1 {
@@ -92,6 +100,7 @@ func (route Route) Path(vals ...string) (string, error) {
 				if len(matches) >= 2 {
 					name = matches[1]
 				}
+
 				if len(matches) == 3 && matches[2] != "" {
 					matcherStr = matches[2]
 				}
@@ -103,6 +112,7 @@ func (route Route) Path(vals ...string) (string, error) {
 				valIndex++
 				varCount++
 				part = part[end+1:]
+
 				continue
 			}
 

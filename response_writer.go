@@ -65,6 +65,7 @@ func (rw *responseWriter) lockedWrite(b []byte) (int, error) {
 
 	n, err := rw.rw.Write(b)
 	rw.length += int64(n)
+
 	if err != nil {
 		return n, fmt.Errorf("luci: write: %w", err)
 	}
@@ -80,6 +81,7 @@ func (rw *responseWriter) lockedReadFrom(r io.Reader) (int64, error) {
 	// Let io.Copy determine if the underlying http.ResponseWriter is a io.ReaderFrom.
 	n, err := io.Copy(rw.rw, r)
 	rw.length += n
+
 	if err != nil {
 		return n, fmt.Errorf("luci: read from: %w", err)
 	}
@@ -87,7 +89,7 @@ func (rw *responseWriter) lockedReadFrom(r io.Reader) (int64, error) {
 	return n, nil
 }
 
-func (rw *responseWriter) stats() (wroteHeader bool, status int, length int64) {
+func (rw *responseWriter) stats() (bool, int, int64) {
 	rw.mu.Lock()
 	defer rw.mu.Unlock()
 

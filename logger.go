@@ -23,32 +23,30 @@ func withLogger(serverLogger *slog.Logger) Middleware {
 				panic(errors.New("luci: withLogger has not been called with responseWriter"))
 			}
 
-			requestAttrs := []any{slog.String("id", ID(req))}
+			requestAttrs := []slog.Attr{slog.String("id", ID(req))}
 
 			name := RequestRoute(req).Name
 			if name != "" {
 				requestAttrs = append(requestAttrs, slog.String("route", name))
 			}
 
-			var varAttrs []any
-			for key, value := range Vars(req) {
-				varAttrs = append(varAttrs, slog.String(key, value))
+			requestVars := Vars(req)
+			if len(requestVars) > 0 {
+				varAttrs := make([]slog.Attr, 0, len(requestVars))
+				for key, value := range requestVars {
+					varAttrs = append(varAttrs, slog.String(key, value))
+				}
+
+				requestAttrs = append(requestAttrs, slog.GroupAttrs("vars", varAttrs...))
 			}
 
-			if len(varAttrs) > 0 {
-				requestAttrs = append(requestAttrs, slog.Group("vars", varAttrs...))
-			}
-
-			logger := serverLogger.With(slog.Group(
-				"request",
-				requestAttrs...,
-			))
+			logger := serverLogger.With(slog.GroupAttrs("request", requestAttrs...))
 
 			newReq := req.WithContext(context.WithValue(req.Context(), loggerKey{}, logger))
 			next.ServeHTTP(wrw, newReq)
 
 			_, status, length := wrw.stats()
-			responseAttrs := []any{
+			responseAttrs := []slog.Attr{
 				slog.String("duration", Duration(req).String()),
 				slog.Int("status", status),
 				slog.Int64("length", length),
@@ -59,10 +57,10 @@ func withLogger(serverLogger *slog.Logger) Middleware {
 				responseAttrs = append(responseAttrs, slog.String("type", contentType))
 			}
 
-			logger.With(slog.Group(
+			logger.With(slog.GroupAttrs(
 				"response",
 				responseAttrs...,
-			)).Info("Request")
+			)).Info("request")
 		})
 	}
 }

@@ -16,11 +16,11 @@ func TestWithValue(t *testing.T) {
 	expected := time.Now().UTC()
 	middleware := WithValue("time", expected)
 
-	handler := middleware(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	handler := middleware(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 		assert.Exactly(t, expected, req.Context().Value("time"))
 	}))
 
-	handler.ServeHTTP(nil, httptest.NewRequest(http.MethodGet, "/status", nil))
+	handler.ServeHTTP(nil, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil))
 }
 
 func TestMiddlewaresHandler(t *testing.T) {
@@ -41,7 +41,7 @@ func TestMiddlewaresHandler(t *testing.T) {
 		middleware("third"),
 	}
 
-	middlewares.Handler(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	middlewares.Handler(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 		first, _ := req.Context().Value("first").(time.Time)
 		second, _ := req.Context().Value("second").(time.Time)
 		third, _ := req.Context().Value("third").(time.Time)
@@ -70,7 +70,7 @@ func TestMiddlewaresHandlerFun(t *testing.T) {
 		middleware("third"),
 	}
 
-	middlewares.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	middlewares.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 		first, _ := req.Context().Value("first").(time.Time)
 		second, _ := req.Context().Value("second").(time.Time)
 		third, _ := req.Context().Value("third").(time.Time)

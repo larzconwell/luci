@@ -3,6 +3,7 @@ package luci
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -74,7 +75,7 @@ func TestNewServer(t *testing.T) {
 			{
 				Method:      http.MethodGet,
 				Pattern:     "/status",
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
+				HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
 			},
 		})
 
@@ -95,13 +96,13 @@ func TestNewServer(t *testing.T) {
 				Name:        "status",
 				Method:      http.MethodGet,
 				Pattern:     "/status",
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
+				HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
 			},
 			{
 				Name:        "status",
 				Method:      http.MethodPost,
 				Pattern:     "/status",
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
+				HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
 			},
 		})
 
@@ -136,8 +137,9 @@ func TestNewServer(t *testing.T) {
 		t.Parallel()
 
 		routeAsserts := func(t *testing.T, rw http.ResponseWriter, req *http.Request) {
-			assert.IsType(t, new(timeoutResponseWriter), rw)
+			t.Helper()
 
+			assert.IsType(t, new(timeoutResponseWriter), rw)
 			assert.True(t, contextHasKey(req.Context(), durationKey{}), "duration key")
 			assert.True(t, contextHasKey(req.Context(), idKey{}), "id key")
 			assert.True(t, contextHasKey(req.Context(), varsKey{}), "vars key")
@@ -195,7 +197,7 @@ func TestNewServer(t *testing.T) {
 				Name:    "timeout_override",
 				Timeout: time.Millisecond * 100,
 				Pattern: "/timeout",
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
+				HandlerFunc: func(_ http.ResponseWriter, req *http.Request) {
 					<-req.Context().Done()
 
 					duration := Duration(req)
@@ -223,14 +225,16 @@ func TestNewServer(t *testing.T) {
 
 		for _, method := range methods {
 			recorder := httptest.NewRecorder()
-			request := httptest.NewRequest(method, "/status", nil)
+			request := httptest.NewRequestWithContext(t.Context(), method, "/status", nil)
 
 			server.server.Handler.ServeHTTP(recorder, request)
 
 			expected := http.StatusOK
-			if method == http.MethodGet {
+
+			switch method {
+			case http.MethodGet:
 				expected = http.StatusCreated
-			} else if method == http.MethodPost {
+			case http.MethodPost:
 				expected = http.StatusAccepted
 			}
 
@@ -238,7 +242,7 @@ func TestNewServer(t *testing.T) {
 		}
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/timeout", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/timeout", nil)
 
 		server.server.Handler.ServeHTTP(recorder, request)
 
@@ -257,7 +261,7 @@ func TestNewServer(t *testing.T) {
 				Name:        "get_status",
 				Method:      http.MethodGet,
 				Pattern:     "/status",
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
+				HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
 			},
 		})
 		app.On("Error", mock.Anything, mock.Anything, http.StatusMethodNotAllowed, ErrMethodNotAllowed).Run(func(args mock.Arguments) {
@@ -277,7 +281,7 @@ func TestNewServer(t *testing.T) {
 		server := NewServer(testConfig, &app)
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodPost, "/status", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/status", nil)
 
 		server.server.Handler.ServeHTTP(recorder, request)
 
@@ -296,7 +300,7 @@ func TestNewServer(t *testing.T) {
 				Name:        "get_status",
 				Method:      http.MethodGet,
 				Pattern:     "/status",
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
+				HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
 			},
 		})
 		app.On("Error", mock.Anything, mock.Anything, http.StatusNotFound, ErrNotFound).Run(func(args mock.Arguments) {
@@ -316,7 +320,7 @@ func TestNewServer(t *testing.T) {
 		server := NewServer(testConfig, &app)
 
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodPost, "/notfound", nil)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notfound", nil)
 
 		server.server.Handler.ServeHTTP(recorder, request)
 
@@ -337,7 +341,7 @@ func TestServerListenAndServe(t *testing.T) {
 				Name:    "status",
 				Method:  http.MethodGet,
 				Pattern: "/status",
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
+				HandlerFunc: func(rw http.ResponseWriter, _ *http.Request) {
 					rw.WriteHeader(http.StatusOK)
 				},
 			},
@@ -353,12 +357,18 @@ func TestServerListenAndServe(t *testing.T) {
 
 		addr := server.Address()
 
-		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, fmt.Sprintf("http://%s/status", addr), nil)
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("http://%s/status", addr), nil)
 		assert.NoError(t, err)
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		res.Body.Close()
+
+		_, err = io.Copy(io.Discard, res.Body)
+		assert.NoError(t, err)
+
+		err = res.Body.Close()
+		assert.NoError(t, err)
+
 		assert.Equal(t, http.StatusOK, res.StatusCode)
 
 		cancel()
@@ -366,7 +376,11 @@ func TestServerListenAndServe(t *testing.T) {
 
 		res, err = http.DefaultClient.Do(req)
 		if res != nil {
-			res.Body.Close()
+			_, err = io.Copy(io.Discard, res.Body)
+			assert.NoError(t, err)
+
+			err = res.Body.Close()
+			assert.NoError(t, err)
 		}
 
 		opErr := new(net.OpError)
@@ -388,7 +402,7 @@ func TestServerListenAndServe(t *testing.T) {
 				Name:    "status",
 				Method:  http.MethodGet,
 				Pattern: "/status",
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
+				HandlerFunc: func(rw http.ResponseWriter, _ *http.Request) {
 					cancel()
 					<-time.After(200 * time.Millisecond)
 					rw.WriteHeader(http.StatusOK)
@@ -409,12 +423,18 @@ func TestServerListenAndServe(t *testing.T) {
 
 		addr := server.Address()
 
-		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, fmt.Sprintf("http://%s/status", addr), nil)
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("http://%s/status", addr), nil)
 		assert.NoError(t, err)
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		res.Body.Close()
+
+		_, err = io.Copy(io.Discard, res.Body)
+		assert.NoError(t, err)
+
+		err = res.Body.Close()
+		assert.NoError(t, err)
+
 		assert.Equal(t, http.StatusOK, res.StatusCode)
 
 		assert.ErrorIs(t, <-listenErr, ErrForcedShutdown)
@@ -432,13 +452,13 @@ func TestServerRoute(t *testing.T) {
 		{
 			Name:        "all_status",
 			Pattern:     "/status",
-			HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
+			HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
 		},
 		{
 			Name:        "get_status",
 			Method:      http.MethodGet,
 			Pattern:     "/status",
-			HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {},
+			HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
 		},
 	})
 
