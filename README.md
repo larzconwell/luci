@@ -19,7 +19,7 @@ See [the example project](https://github.com/larzconwell/luci/tree/main/example)
 # Developing `luci`
 
 ## Prerequisites
-- Go 1.21
+- Go 1.26
 - `golangci-lint` 1.55
 
 ## Setting up hooks
