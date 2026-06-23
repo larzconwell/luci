@@ -2,12 +2,5 @@
 set -e
 set -u
 
-lint_errors=$(golangci-lint run --issues-exit-code 0)
-if [[ "${lint_errors}" != "" ]]; then
-    echo "Please correct the following linter errors before committing"
-    echo "${lint_errors}"
-
-    exit 1
-fi
-
-exit 0
+make lint
+make test
