@@ -1,12 +1,9 @@
-version: "2"
-
+version: 2
 run:
   timeout: "1m"
-
 formatters:
   enable:
     - "goimports"
-
 linters:
   default: "none"
   enable:
@@ -28,6 +25,7 @@ linters:
     - "forcetypeassert"
     - "funcorder"
     - "gocheckcompilerdirectives"
+    - "gochecknoglobals"
     - "gochecknoinits"
     - "godot"
     - "goprintffuncname"
@@ -43,7 +41,6 @@ linters:
     - "mirror"
     - "modernize"
     - "nakedret"
-    - "nestif"
     - "noctx"
     - "noinlineerr"
     - "nolintlint"
@@ -80,7 +77,8 @@ linters:
     exhaustive:
       check:
         - "switch"
-        - "map"
+        - "mapliteral"
+        - "typeswitch"
       default-signifies-exhaustive: true
     funcorder:
       function: true
@@ -89,6 +87,13 @@ linters:
         - "identical"
         - "unused"
         - "unexported"
+    ireturn:
+      allow:
+        - "empty"
+        - "anon"
+        - "error"
+        - "generic"
+        - "stdlib"
     nakedret:
       max-func-lines: 0
     paralleltest:

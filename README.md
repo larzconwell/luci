@@ -1,7 +1,7 @@
 ![luci](https://raw.githubusercontent.com/larzconwell/luci/main/luci.svg)
 
 [![License](https://img.shields.io/badge/License-BSD_2--Clause_+_Patent-blue.svg)](https://github.com/larzconwell/luci/blob/main/LICENSE)
-[![Lint/Test](https://github.com/larzconwell/luci/actions/workflows/test-lint.yml/badge.svg)](https://github.com/larzconwell/luci/actions)
+[![Lint/Test](https://github.com/larzconwell/luci/actions/workflows/checks.yml/badge.svg)](https://github.com/larzconwell/luci/actions)
 [![Package Reference](https://pkg.go.dev/badge/github.com/larzconwell/luci.svg)](https://pkg.go.dev/github.com/larzconwell/luci)
 
 `luci` is a Go module to create web services quickly and painlessly.
@@ -18,17 +18,8 @@ See [the example project](https://github.com/larzconwell/luci/tree/main/example)
 
 # Developing `luci`
 
-## Prerequisites
-- Go 1.26
-- `golangci-lint` 2.12
-
-## Setting up hooks
-```shell
-ln -s $(pwd)/.hooks/pre-commit .git/hooks/pre-commit
-```
-
-## Testing and linting
-Make targets exist for testing and linting
-- `make test`
-- `make testrace`
-- `make lint`
+1. `mise install` - Install build dependencies
+1. `mise setup` - Setup githooks
+1. `mise lint` - Lint code
+1. `mise test` - Run tests
+1. `mise testrace` - Run tests with race detector enabled

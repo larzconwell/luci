@@ -2,5 +2,5 @@
 set -e
 set -u
 
-make lint
-make test
+mise run lint
+mise run test
