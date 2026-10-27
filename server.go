@@ -139,6 +139,8 @@ func (server *Server) ListenAndServe(ctx context.Context) error {
 	//gosec:disable G118
 	go func() {
 		select {
+		// The only time this happens is from a close, so no error to check.
+		//nolint:errcheck
 		case <-done:
 			return
 		case <-ctx.Done():

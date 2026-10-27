@@ -47,7 +47,7 @@ func TestWithID(t *testing.T) {
 
 		recorder := httptest.NewRecorder()
 		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
-		request.Header.Set("X-Request-Id", "luci")
+		request.Header.Set("X-Request-ID", "luci")
 
 		handler.ServeHTTP(recorder, request)
 	})
@@ -62,7 +62,7 @@ func TestWithID(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/status", nil)
 		request.Header.Set("Request-Id", "luci")
-		request.Header.Set("X-Request-Id", "foobar")
+		request.Header.Set("X-Request-ID", "foobar")
 
 		handler.ServeHTTP(recorder, request)
 	})
@@ -96,6 +96,6 @@ func TestWithID(t *testing.T) {
 		handler.ServeHTTP(recorder, request)
 
 		assert.Equal(t, "luci", recorder.Header().Get("Request-Id"))
-		assert.Equal(t, "luci", recorder.Header().Get("X-Request-Id"))
+		assert.Equal(t, "luci", recorder.Header().Get("X-Request-ID"))
 	})
 }

@@ -36,6 +36,8 @@ func withRecover(errorHandler ErrorHandlerFunc) Middleware {
 					wroteHeader, _, _ = resWriter.stats()
 				case *timeoutResponseWriter:
 					wroteHeader, _, _ = resWriter.stats()
+				default:
+					wroteHeader = false
 				}
 
 				if wroteHeader {

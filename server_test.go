@@ -14,10 +14,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func contextHasKey(ctx context.Context, key any) bool {
-	return ctx.Value(key) != nil
-}
-
 type TestApplication struct {
 	mock.Mock
 }
@@ -478,4 +474,8 @@ func TestServerRoute(t *testing.T) {
 
 	_, ok = server.Route("nonexistent_route")
 	assert.False(t, ok)
+}
+
+func contextHasKey(ctx context.Context, key any) bool {
+	return ctx.Value(key) != nil
 }

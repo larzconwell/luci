@@ -25,7 +25,6 @@ linters:
     - "forcetypeassert"
     - "funcorder"
     - "gocheckcompilerdirectives"
-    - "gochecknoglobals"
     - "gochecknoinits"
     - "godot"
     - "goprintffuncname"
