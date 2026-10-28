@@ -12,6 +12,4 @@ type Application interface {
 	Middlewares() Middlewares
 	// Error defines how the application responds to errors when handling a request.
 	Error(rw http.ResponseWriter, req *http.Request, status int, err error)
-	// Respond defines how the application reponds to requests that are successful.
-	Respond(rw http.ResponseWriter, req *http.Request, value any)
 }
