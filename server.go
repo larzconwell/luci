@@ -34,7 +34,7 @@ func NewServer(config Config, app Application) *Server {
 	badRequestMiddlewares := append(Middlewares{
 		withResponseWriter,
 		withDuration,
-		withID(app.Error),
+		withID,
 		withLogger(config.Logger),
 		withRecover(app.Error),
 	}, appMiddlewares...)
@@ -71,7 +71,7 @@ func NewServer(config Config, app Application) *Server {
 		router := mux.With(
 			withResponseWriter,
 			withDuration,
-			withID(app.Error),
+			withID,
 			withVars,
 			WithValue(requestRouteKey{}, route),
 			withLogger(config.Logger),

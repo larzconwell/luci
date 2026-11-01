@@ -4,7 +4,6 @@ go 1.27.3
 
 require (
 	github.com/go-chi/chi/v5 v5.5.0
-	github.com/oklog/ulid/v2 v2.1.2
 	github.com/stretchr/testify v1.12.1
 	github.com/unrolled/render v1.8.1
 )

@@ -1,20 +1,9 @@
 package luci
 
 import (
-	"bufio"
 	"context"
-	"crypto/rand"
-	"fmt"
 	"net/http"
-
-	"github.com/oklog/ulid/v2"
-)
-
-var (
-	reader  = bufio.NewReaderSize(rand.Reader, 10*10)
-	entropy = &ulid.LockedMonotonicReader{
-		MonotonicReader: ulid.Monotonic(reader, 0),
-	}
+	"uuid"
 )
 
 type idKey struct{}
@@ -25,37 +14,26 @@ func ID(req *http.Request) string {
 	return id
 }
 
-func withID(errorHandler ErrorHandlerFunc) Middleware {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			xKey := "X-Request-Id"
-			key := "Request-Id"
+func withID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		xKey := "X-Request-Id"
+		key := "Request-Id"
+		xID := req.Header.Get(xKey)
 
-			xID := req.Header.Get(xKey)
+		id := req.Header.Get(key)
+		if id == "" {
+			id = xID
+		}
 
-			id := req.Header.Get(key)
-			if id == "" {
-				id = xID
-			}
+		if id == "" {
+			id = uuid.NewV7().String()
+		}
 
-			if id == "" {
-				now := ulid.Now()
+		header := rw.Header()
+		header.Set(xKey, id)
+		header.Set(key, id)
 
-				ulid, err := ulid.New(now, entropy)
-				if err != nil {
-					errorHandler(rw, req, http.StatusInternalServerError, fmt.Errorf("luci: id generate: %w", err))
-					return
-				}
-
-				id = ulid.String()
-			}
-
-			header := rw.Header()
-			header.Set(xKey, id)
-			header.Set(key, id)
-
-			newReq := req.WithContext(context.WithValue(req.Context(), idKey{}, id))
-			next.ServeHTTP(rw, newReq)
-		})
-	}
+		newReq := req.WithContext(context.WithValue(req.Context(), idKey{}, id))
+		next.ServeHTTP(rw, newReq)
+	})
 }

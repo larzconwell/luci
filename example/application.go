@@ -8,9 +8,9 @@ import (
 	"log/slog"
 	"net/http"
 	"text/template"
+	"uuid"
 
 	"github.com/larzconwell/luci"
-	"github.com/oklog/ulid/v2"
 	"github.com/unrolled/render"
 )
 
@@ -135,6 +135,7 @@ func (app *Application) CreatePostGET(rw http.ResponseWriter, req *http.Request)
 
 func (app *Application) CreatePostPOST(rw http.ResponseWriter, req *http.Request) {
 	getPostRoute, _ := app.server.Route(GetPost)
+	id := uuid.NewV7().String()
 
 	title := req.FormValue("title")
 	if title == "" {
@@ -154,19 +155,7 @@ func (app *Application) CreatePostPOST(rw http.ResponseWriter, req *http.Request
 		return
 	}
 
-	id, err := ulid.New(ulid.Now(), ulid.DefaultEntropy())
-	if err != nil {
-		app.Error(rw, req, http.StatusInternalServerError, errors.New("failed to create post"))
-
-		luci.Logger(req).With(
-			slog.Any("error", err),
-			slog.String("author", author),
-		).Error("failed to generate post id")
-
-		return
-	}
-
-	getPost, err := getPostRoute.Path(id.String())
+	getPost, err := getPostRoute.Path(id)
 	if err != nil {
 		app.Error(rw, req, http.StatusInternalServerError, errors.New("failed to create post"))
 
@@ -179,7 +168,7 @@ func (app *Application) CreatePostPOST(rw http.ResponseWriter, req *http.Request
 	}
 
 	post := Post{
-		ID:     id.String(),
+		ID:     id,
 		Title:  title,
 		Link:   link,
 		Author: author,

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"uuid"
 
-	"github.com/oklog/ulid/v2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,7 +27,7 @@ func TestWithID(t *testing.T) {
 	t.Run("sets id to Request-Id in request header", func(t *testing.T) {
 		t.Parallel()
 
-		handler := withID(nil)(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
+		handler := withID(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 			assert.Equal(t, "luci", ID(req))
 		}))
 
@@ -41,7 +41,7 @@ func TestWithID(t *testing.T) {
 	t.Run("sets id to X-Request-Id in request header", func(t *testing.T) {
 		t.Parallel()
 
-		handler := withID(nil)(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
+		handler := withID(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 			assert.Equal(t, "luci", ID(req))
 		}))
 
@@ -55,7 +55,7 @@ func TestWithID(t *testing.T) {
 	t.Run("sets id to Request-Id over X-Request-Id if both exist in request header", func(t *testing.T) {
 		t.Parallel()
 
-		handler := withID(nil)(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
+		handler := withID(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 			assert.Equal(t, "luci", ID(req))
 		}))
 
@@ -67,15 +67,18 @@ func TestWithID(t *testing.T) {
 		handler.ServeHTTP(recorder, request)
 	})
 
-	t.Run("sets id to valid ULID if no id is provided", func(t *testing.T) {
+	t.Run("sets id to valid UUID v7 if no id is provided", func(t *testing.T) {
 		t.Parallel()
 
-		handler := withID(nil)(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
+		handler := withID(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 			id := ID(req)
 			assert.NotEmpty(t, id)
 
-			_, err := ulid.ParseStrict(id)
+			uuid, err := uuid.Parse(id)
 			assert.NoError(t, err)
+
+			// Version is stored in the most significant 4 bits of the 7th byte.
+			assert.Equal(t, uint8(7), uuid[6]>>4)
 		}))
 
 		recorder := httptest.NewRecorder()
@@ -85,7 +88,7 @@ func TestWithID(t *testing.T) {
 	t.Run("adds Request-Id and X-Request-Id to response header", func(t *testing.T) {
 		t.Parallel()
 
-		handler := withID(nil)(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		handler := withID(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 			rw.WriteHeader(http.StatusOK)
 		}))
 
