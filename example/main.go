@@ -3,7 +3,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -13,22 +12,32 @@ import (
 )
 
 func main() {
-	err := run()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	os.Exit(run())
 }
 
-func run() error {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
+func run() int {
+	ctx, sigRestore := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer sigRestore()
 
+	// Restore the OS signal handler once we've gotten a signal
+	// to allow for force stopping with further signals.
+	go func() {
+		<-ctx.Done()
+		sigRestore()
+	}()
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	app := NewApplication(luci.Config{
 		Address:         ":7879",
 		ShutdownTimeout: time.Second,
-		Logger:          slog.New(slog.NewJSONHandler(os.Stdout, nil)),
+		Logger:          logger,
 	})
 
-	return app.ListenAndServe(ctx)
+	err := app.ListenAndServe(ctx)
+	if err != nil {
+		logger.With(slog.Any("error", err)).Error("failed to listen and serve")
+		return 1
+	}
+
+	return 0
 }

@@ -1,0 +1,24 @@
+<style>
+  .post {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5em;
+  }
+
+  .posted_by {
+    margin-left: auto;
+  }
+
+  .show_post {
+    font-size: 0.8em;
+  }
+</style>
+
+{{ range .Data }}
+  <div class="post">
+    <a target="_blank" href="{{ .Link }}">{{ .Title }}</a>
+    <span>|</span>
+    <a class="show_post" href="/posts/{{ .ID }}">Show Post</a>
+    <span class="posted_by">{{ .Author }}</span>
+  </div>
+{{ end }}

@@ -1,0 +1,29 @@
+<style>
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+header > h1 {
+  margin: 0;
+  padding: 0;
+}
+
+header > nav {
+  display: flex;
+  gap: 1rem;
+}
+</style>
+
+<header>
+  <h1>{{ .Title }}</h1>
+
+  <nav>
+    {{ range .Links }}
+      <a href="{{ index . 0 }}">{{ index . 1 }}</a>
+    {{ end }}
+  </nav>
+</header>
+
