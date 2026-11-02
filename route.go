@@ -36,6 +36,10 @@ type Route struct {
 	Middlewares Middlewares
 	// HandlerFunc defines the handler function to call to handle the request.
 	HandlerFunc http.HandlerFunc
+	// Routes defines the routes to group under the parent routes pattern. The parent
+	// routes Timeout and Method are used by the child routes by default. The parent
+	// routes Middlewares are prepended to the child routes.
+	Routes []Route
 }
 
 // RequestRoute retrieves the route that's associated with the given request.

@@ -58,117 +58,315 @@ func TestNewServer(t *testing.T) {
 			ReadHeaderTimeout: testConfig.ReadHeaderTimeout,
 		}, server.server)
 		assert.NotNil(t, server.server.Handler)
+		assert.NotNil(t, server.router)
+		assert.Same(t, server.router, server.server.Handler)
 		assert.NotNil(t, server.routes)
 		assert.NotNil(t, server.started)
 	})
 
-	t.Run("panics if route has no name", func(t *testing.T) {
+	t.Run("registering route groups", func(t *testing.T) {
 		t.Parallel()
 
-		var app TestApplication
-		app.On("Middlewares").Return(nil)
-		app.On("Routes").Return([]Route{
-			{
-				Method:      http.MethodGet,
-				Pattern:     "/status",
-				HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
-			},
+		t.Run("panics if route group has name", func(t *testing.T) {
+			t.Parallel()
+
+			var app TestApplication
+			app.On("Middlewares").Return(nil)
+			app.On("Routes").Return([]Route{
+				{
+					Name:    "posts_group",
+					Pattern: "/posts",
+					Routes: []Route{
+						{
+							Name:        "posts_get_all",
+							Method:      http.MethodGet,
+							Pattern:     "/",
+							HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
+						},
+					},
+				},
+			})
+
+			assert.PanicsWithError(t, "luci: route group must not have a name", func() {
+				NewServer(testConfig, &app)
+			})
+
+			app.AssertExpectations(t)
 		})
 
-		assert.PanicsWithError(t, "luci: route must have a name", func() {
-			NewServer(testConfig, &app)
+		t.Run("panics if route group has handler", func(t *testing.T) {
+			t.Parallel()
+
+			var app TestApplication
+			app.On("Middlewares").Return(nil)
+			app.On("Routes").Return([]Route{
+				{
+					Pattern:     "/posts",
+					HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
+					Routes: []Route{
+						{
+							Name:        "posts_get_all",
+							Method:      http.MethodGet,
+							Pattern:     "/",
+							HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
+						},
+					},
+				},
+			})
+
+			assert.PanicsWithError(t, "luci: route group must not have a handler", func() {
+				NewServer(testConfig, &app)
+			})
+
+			app.AssertExpectations(t)
 		})
 
-		app.AssertExpectations(t)
+		t.Run("panics if route group has no pattern", func(t *testing.T) {
+			t.Parallel()
+
+			var app TestApplication
+			app.On("Middlewares").Return(nil)
+			app.On("Routes").Return([]Route{
+				{
+					Routes: []Route{
+						{
+							Name:        "posts_get_all",
+							Method:      http.MethodGet,
+							Pattern:     "/posts",
+							HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
+						},
+					},
+				},
+			})
+
+			assert.PanicsWithError(t, `luci: route group must have a pattern`, func() {
+				NewServer(testConfig, &app)
+			})
+
+			app.AssertExpectations(t)
+		})
+
+		t.Run("panics if route group pattern doesn't begin with slash", func(t *testing.T) {
+			t.Parallel()
+
+			var app TestApplication
+			app.On("Middlewares").Return(nil)
+			app.On("Routes").Return([]Route{
+				{
+					Pattern: "posts",
+					Routes: []Route{
+						{
+							Name:        "posts_get_all",
+							Method:      http.MethodGet,
+							Pattern:     "/",
+							HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
+						},
+					},
+				},
+			})
+
+			assert.PanicsWithError(t, `luci: route group pattern must begin with /`, func() {
+				NewServer(testConfig, &app)
+			})
+
+			app.AssertExpectations(t)
+		})
+
+		t.Run("registers children routes", func(t *testing.T) {
+			t.Parallel()
+
+			var app TestApplication
+			app.On("Middlewares").Return(nil)
+			app.On("Routes").Return([]Route{
+				{
+					Pattern: "/posts",
+					Routes: []Route{
+						{
+							Name:        "posts_create",
+							Method:      http.MethodPost,
+							Pattern:     "/create",
+							HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
+						},
+					},
+				},
+			})
+
+			server := NewServer(testConfig, &app)
+			routes := server.router.Routes()
+
+			assert.Len(t, routes, 1)
+			assert.Equal(t, "/posts/create", routes[0].Pattern)
+
+			assert.Contains(t, server.routes, "posts_create")
+			assert.Equal(t, "/posts/create", server.routes["posts_create"].Pattern)
+
+			app.AssertExpectations(t)
+		})
 	})
 
-	t.Run("panics if route names are not unique", func(t *testing.T) {
+	t.Run("registering routes", func(t *testing.T) {
 		t.Parallel()
 
-		var app TestApplication
-		app.On("Middlewares").Return(nil)
-		app.On("Routes").Return([]Route{
-			{
-				Name:        "status",
-				Method:      http.MethodGet,
-				Pattern:     "/status",
-				HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
-			},
-			{
-				Name:        "status",
-				Method:      http.MethodPost,
-				Pattern:     "/status",
-				HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
-			},
+		t.Run("panics if route has no name", func(t *testing.T) {
+			t.Parallel()
+
+			var app TestApplication
+			app.On("Middlewares").Return(nil)
+			app.On("Routes").Return([]Route{
+				{
+					Method:      http.MethodGet,
+					Pattern:     "/status",
+					HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
+				},
+			})
+
+			assert.PanicsWithError(t, "luci: route must have a name", func() {
+				NewServer(testConfig, &app)
+			})
+
+			app.AssertExpectations(t)
 		})
 
-		assert.PanicsWithError(t, `luci: route "status" already exists`, func() {
-			NewServer(testConfig, &app)
+		t.Run("panics if route has no handler", func(t *testing.T) {
+			t.Parallel()
+
+			var app TestApplication
+			app.On("Middlewares").Return(nil)
+			app.On("Routes").Return([]Route{
+				{
+					Name:    "status",
+					Method:  http.MethodGet,
+					Pattern: "/status",
+				},
+			})
+
+			assert.PanicsWithError(t, `luci: route "status" must have a handler`, func() {
+				NewServer(testConfig, &app)
+			})
+
+			app.AssertExpectations(t)
 		})
 
-		app.AssertExpectations(t)
+		t.Run("panics if route has no pattern", func(t *testing.T) {
+			t.Parallel()
+
+			var app TestApplication
+			app.On("Middlewares").Return(nil)
+			app.On("Routes").Return([]Route{
+				{
+					Name:        "status",
+					HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
+				},
+			})
+
+			assert.PanicsWithError(t, `luci: route "status" must have a pattern`, func() {
+				NewServer(testConfig, &app)
+			})
+
+			app.AssertExpectations(t)
+		})
+
+		t.Run("panics if route pattern doesn't begin with slash", func(t *testing.T) {
+			t.Parallel()
+
+			var app TestApplication
+			app.On("Middlewares").Return(nil)
+			app.On("Routes").Return([]Route{
+				{
+					Name:        "status",
+					Pattern:     "status",
+					HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
+				},
+			})
+
+			assert.PanicsWithError(t, `luci: route "status" pattern must begin with /`, func() {
+				NewServer(testConfig, &app)
+			})
+
+			app.AssertExpectations(t)
+		})
+
+		t.Run("panics if route names are not unique", func(t *testing.T) {
+			t.Parallel()
+
+			var app TestApplication
+			app.On("Middlewares").Return(nil)
+			app.On("Routes").Return([]Route{
+				{
+					Name:        "status",
+					Method:      http.MethodGet,
+					Pattern:     "/status",
+					HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
+				},
+				{
+					Name:        "status",
+					Method:      http.MethodPost,
+					Pattern:     "/status",
+					HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
+				},
+			})
+
+			assert.PanicsWithError(t, `luci: route "status" already exists`, func() {
+				NewServer(testConfig, &app)
+			})
+
+			app.AssertExpectations(t)
+		})
+
+		t.Run("route is added", func(t *testing.T) {
+			t.Parallel()
+
+			var app TestApplication
+			app.On("Middlewares").Return(nil)
+			app.On("Routes").Return([]Route{
+				{
+					Name:        "posts_create",
+					Method:      http.MethodPost,
+					Pattern:     "/posts/create",
+					HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
+				},
+			})
+
+			server := NewServer(testConfig, &app)
+			routerRoutes := server.router.Routes()
+
+			assert.Len(t, routerRoutes, 1)
+			assert.Equal(t, "/posts/create", routerRoutes[0].Pattern)
+
+			assert.Contains(t, server.routes, "posts_create")
+			assert.Equal(t, "/posts/create", server.routes["posts_create"].Pattern)
+
+			app.AssertExpectations(t)
+		})
+
+		t.Run("route pattern has ending slash stripped", func(t *testing.T) {
+			t.Parallel()
+
+			var app TestApplication
+			app.On("Middlewares").Return(nil)
+			app.On("Routes").Return([]Route{
+				{
+					Name:        "posts_create",
+					Method:      http.MethodPost,
+					Pattern:     "/posts/create/",
+					HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
+				},
+			})
+
+			server := NewServer(testConfig, &app)
+			routerRoutes := server.router.Routes()
+
+			assert.Len(t, routerRoutes, 1)
+			assert.Equal(t, "/posts/create", routerRoutes[0].Pattern)
+
+			assert.Contains(t, server.routes, "posts_create")
+			assert.Equal(t, "/posts/create", server.routes["posts_create"].Pattern)
+
+			app.AssertExpectations(t)
+		})
 	})
 
-	t.Run("panics if route has no pattern", func(t *testing.T) {
-		t.Parallel()
-
-		var app TestApplication
-		app.On("Middlewares").Return(nil)
-		app.On("Routes").Return([]Route{
-			{
-				Name:        "status",
-				HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
-			},
-		})
-
-		assert.PanicsWithError(t, `luci: route "status" must have a pattern`, func() {
-			NewServer(testConfig, &app)
-		})
-
-		app.AssertExpectations(t)
-	})
-
-	t.Run("panics if route pattern doesn't begin with slash", func(t *testing.T) {
-		t.Parallel()
-
-		var app TestApplication
-		app.On("Middlewares").Return(nil)
-		app.On("Routes").Return([]Route{
-			{
-				Name:        "status",
-				Pattern:     "status",
-				HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
-			},
-		})
-
-		assert.PanicsWithError(t, `luci: route "status" pattern must begin with /`, func() {
-			NewServer(testConfig, &app)
-		})
-
-		app.AssertExpectations(t)
-	})
-
-	t.Run("panics if route has no handler", func(t *testing.T) {
-		t.Parallel()
-
-		var app TestApplication
-		app.On("Middlewares").Return(nil)
-		app.On("Routes").Return([]Route{
-			{
-				Name:    "status",
-				Method:  http.MethodGet,
-				Pattern: "/status",
-			},
-		})
-
-		assert.PanicsWithError(t, `luci: route "status" must have a handler`, func() {
-			NewServer(testConfig, &app)
-		})
-
-		app.AssertExpectations(t)
-	})
-
-	t.Run("add routes", func(t *testing.T) {
+	t.Run("builds router from routes", func(t *testing.T) {
 		t.Parallel()
 
 		routeAsserts := func(t *testing.T, rw http.ResponseWriter, req *http.Request) {
@@ -181,71 +379,64 @@ func TestNewServer(t *testing.T) {
 			assert.True(t, contextHasKey(req.Context(), requestRouteKey{}), "request route key")
 			assert.True(t, contextHasKey(req.Context(), loggerKey{}), "logger key")
 			assert.True(t, contextHasKey(req.Context(), "app_middleware"), "app key")
+			assert.True(t, contextHasKey(req.Context(), "route_group_middleware"), "route group key")
 			assert.True(t, contextHasKey(req.Context(), "route_middleware"), "route key")
 		}
 
 		var app TestApplication
-		app.On("Error", mock.Anything, mock.Anything, http.StatusServiceUnavailable, http.ErrHandlerTimeout)
 		app.On("Middlewares").Return(Middlewares{
 			WithValue("app_middleware", true),
 		})
 		app.On("Routes").Return([]Route{
 			{
-				Name:    "all_status",
-				Pattern: "/status",
+				Pattern: "/internal",
 				Middlewares: Middlewares{
-					WithValue("route_middleware", true),
+					WithValue("route_group_middleware", true),
 				},
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
-					routeAsserts(t, rw, req)
+				Routes: []Route{
+					{
+						Name:    "all_status",
+						Pattern: "/status",
+						Middlewares: Middlewares{
+							WithValue("route_middleware", true),
+						},
+						HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
+							routeAsserts(t, rw, req)
 
-					rw.WriteHeader(http.StatusOK)
-				},
-			},
-			{
-				Name:    "get_status",
-				Method:  http.MethodGet,
-				Pattern: "/status",
-				Middlewares: Middlewares{
-					WithValue("route_middleware", true),
-				},
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
-					routeAsserts(t, rw, req)
+							rw.WriteHeader(http.StatusOK)
+						},
+					},
+					{
+						Name:    "get_status",
+						Method:  http.MethodGet,
+						Pattern: "/status",
+						Middlewares: Middlewares{
+							WithValue("route_middleware", true),
+						},
+						HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
+							routeAsserts(t, rw, req)
 
-					rw.WriteHeader(http.StatusCreated)
-				},
-			},
-			{
-				Name:    "post_status",
-				Method:  http.MethodPost,
-				Pattern: "/status",
-				Middlewares: Middlewares{
-					WithValue("route_middleware", true),
-				},
-				HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
-					routeAsserts(t, rw, req)
+							rw.WriteHeader(http.StatusCreated)
+						},
+					},
+					{
+						Name:    "post_status",
+						Method:  http.MethodPost,
+						Pattern: "/status",
+						Middlewares: Middlewares{
+							WithValue("route_middleware", true),
+						},
+						HandlerFunc: func(rw http.ResponseWriter, req *http.Request) {
+							routeAsserts(t, rw, req)
 
-					rw.WriteHeader(http.StatusAccepted)
-				},
-			},
-			{
-				Name:    "timeout_override",
-				Timeout: time.Millisecond * 100,
-				Pattern: "/timeout",
-				HandlerFunc: func(_ http.ResponseWriter, req *http.Request) {
-					<-req.Context().Done()
-
-					duration := Duration(req)
-					assert.Greater(t, duration, time.Millisecond*50)
-					assert.Less(t, duration, time.Millisecond*200)
+							rw.WriteHeader(http.StatusAccepted)
+						},
+					},
 				},
 			},
 		})
 
-		config := testConfig
-		config.RouteTimeout = time.Second
-		server := NewServer(config, &app)
-
+		server := NewServer(testConfig, &app)
 		methods := []string{
 			http.MethodConnect,
 			http.MethodDelete,
@@ -260,7 +451,7 @@ func TestNewServer(t *testing.T) {
 
 		for _, method := range methods {
 			recorder := httptest.NewRecorder()
-			request := httptest.NewRequestWithContext(t.Context(), method, "/status", nil)
+			request := httptest.NewRequestWithContext(t.Context(), method, "/internal/status/", nil)
 
 			server.server.Handler.ServeHTTP(recorder, request)
 
@@ -276,12 +467,166 @@ func TestNewServer(t *testing.T) {
 			assert.Equal(t, expected, recorder.Code, method)
 		}
 
-		recorder := httptest.NewRecorder()
-		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/timeout", nil)
+		app.AssertExpectations(t)
+	})
 
-		server.server.Handler.ServeHTTP(recorder, request)
+	t.Run("route groups inherit method", func(t *testing.T) {
+		t.Parallel()
+
+		var app TestApplication
+		app.On("Error", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			//nolint:forcetypeassert
+			rw := args.Get(0).(http.ResponseWriter)
+			//nolint:forcetypeassert
+			status := args.Get(2).(int)
+
+			rw.WriteHeader(status)
+		})
+		app.On("Middlewares").Return(nil)
+		app.On("Routes").Return([]Route{
+			{
+				Method:  http.MethodGet,
+				Pattern: "/method",
+				Routes: []Route{
+					{
+						Name:    "method_inherit",
+						Pattern: "/inherit",
+						HandlerFunc: func(rw http.ResponseWriter, _ *http.Request) {
+							rw.WriteHeader(http.StatusAccepted)
+						},
+					},
+					{
+						Name:    "method_override",
+						Method:  http.MethodHead,
+						Pattern: "/override",
+						HandlerFunc: func(rw http.ResponseWriter, _ *http.Request) {
+							rw.WriteHeader(http.StatusAccepted)
+						},
+					},
+				},
+			},
+		})
+
+		server := NewServer(testConfig, &app)
+		methods := []string{
+			http.MethodConnect,
+			http.MethodDelete,
+			http.MethodGet,
+			http.MethodHead,
+			http.MethodOptions,
+			http.MethodPatch,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodTrace,
+		}
+
+		for _, method := range methods {
+			recorder := httptest.NewRecorder()
+			request := httptest.NewRequestWithContext(t.Context(), method, "/method/inherit", nil)
+
+			server.server.Handler.ServeHTTP(recorder, request)
+
+			expected := http.StatusMethodNotAllowed
+			if method == http.MethodGet {
+				expected = http.StatusAccepted
+			}
+
+			assert.Equal(t, expected, recorder.Code, method)
+		}
+
+		for _, method := range methods {
+			recorder := httptest.NewRecorder()
+			request := httptest.NewRequestWithContext(t.Context(), method, "/method/override", nil)
+
+			server.server.Handler.ServeHTTP(recorder, request)
+
+			expected := http.StatusMethodNotAllowed
+			if method == http.MethodHead {
+				expected = http.StatusAccepted
+			}
+
+			assert.Equal(t, expected, recorder.Code, method)
+		}
 
 		app.AssertExpectations(t)
+	})
+
+	t.Run("route timeout is inherited from config and route groups", func(t *testing.T) {
+		t.Parallel()
+
+		var app TestApplication
+		app.On("Error", mock.Anything, mock.Anything, http.StatusServiceUnavailable, http.ErrHandlerTimeout)
+		app.On("Middlewares").Return(nil)
+		app.On("Routes").Return([]Route{
+			{
+				Name:    "config_timeout_inherit",
+				Pattern: "/timeout_inherit",
+				HandlerFunc: func(_ http.ResponseWriter, req *http.Request) {
+					<-req.Context().Done()
+
+					duration := Duration(req)
+					assert.Greater(t, duration, time.Millisecond*120)
+					assert.Less(t, duration, time.Millisecond*180)
+				},
+			},
+			{
+				Name:    "config_timeout_override",
+				Timeout: time.Millisecond * 100,
+				Pattern: "/timeout_override",
+				HandlerFunc: func(_ http.ResponseWriter, req *http.Request) {
+					<-req.Context().Done()
+
+					duration := Duration(req)
+					assert.Greater(t, duration, time.Millisecond*70)
+					assert.Less(t, duration, time.Millisecond*130)
+				},
+			},
+			{
+				Timeout: time.Millisecond * 150,
+				Pattern: "/timeout",
+				Routes: []Route{
+					{
+						Name:    "group_timeout_inherit",
+						Pattern: "/inherit",
+						HandlerFunc: func(_ http.ResponseWriter, req *http.Request) {
+							<-req.Context().Done()
+
+							duration := Duration(req)
+							assert.Greater(t, duration, time.Millisecond*120)
+							assert.Less(t, duration, time.Millisecond*180)
+						},
+					},
+					{
+						Name:    "group_timeout_override",
+						Timeout: time.Millisecond * 100,
+						Pattern: "/override",
+						HandlerFunc: func(_ http.ResponseWriter, req *http.Request) {
+							<-req.Context().Done()
+
+							duration := Duration(req)
+							assert.Greater(t, duration, time.Millisecond*70)
+							assert.Less(t, duration, time.Millisecond*130)
+						},
+					},
+				},
+			},
+		})
+
+		config := testConfig
+		config.RouteTimeout = time.Millisecond * 150
+		server := NewServer(config, &app)
+
+		for name, route := range server.routes {
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+
+				recorder := httptest.NewRecorder()
+				request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, route.Pattern, nil)
+				server.server.Handler.ServeHTTP(recorder, request)
+
+				app.AssertExpectations(t)
+			})
+		}
 	})
 
 	t.Run("handles method not allowed", func(t *testing.T) {
@@ -407,7 +752,7 @@ func TestServerAddress(t *testing.T) {
 	server := &Server{started: make(chan struct{}, 1)}
 
 	go func() {
-		<-time.After(200 * time.Millisecond)
+		<-time.After(time.Millisecond * 200)
 
 		server.address = expected
 		server.started <- struct{}{}
@@ -533,7 +878,7 @@ func TestServerStart(t *testing.T) {
 					Pattern: "/status",
 					HandlerFunc: func(rw http.ResponseWriter, _ *http.Request) {
 						cancel()
-						<-time.After(200 * time.Millisecond)
+						<-time.After(time.Millisecond * 200)
 						rw.WriteHeader(http.StatusOK)
 					},
 				},

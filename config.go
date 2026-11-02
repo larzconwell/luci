@@ -11,7 +11,7 @@ var (
 		Address:           ":http",
 		RouteTimeout:      time.Second,
 		ReadHeaderTimeout: time.Second,
-		ShutdownTimeout:   5 * time.Second,
+		ShutdownTimeout:   time.Second * 5,
 		Logger:            slog.Default(),
 	}
 )

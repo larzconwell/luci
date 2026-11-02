@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 // Server maintains the running state of an application.
@@ -17,6 +18,7 @@ type Server struct {
 	app       Application
 	logger    *slog.Logger
 	server    *http.Server
+	router    chi.Router
 	routes    map[string]Route
 	serveDone chan error
 	started   chan struct{}
@@ -30,15 +32,17 @@ func NewServer(config Config, app Application) *Server {
 	config = buildConfig(config)
 
 	router := chi.NewRouter()
-
-	appMiddlewares := app.Middlewares()
-	badRequestMiddlewares := append(Middlewares{
+	router.Use(
+		middleware.StripSlashes,
 		withResponseWriter,
 		withDuration,
 		withID,
+	)
+
+	badRequestMiddlewares := append(Middlewares{
 		withLogger(config.Logger),
 		withRecover(app.Error),
-	}, appMiddlewares...)
+	}, app.Middlewares()...)
 
 	router.MethodNotAllowed(badRequestMiddlewares.Handler(
 		errorRespond(app.Error, http.StatusMethodNotAllowed, ErrMethodNotAllowed),
@@ -48,76 +52,27 @@ func NewServer(config Config, app Application) *Server {
 	).ServeHTTP)
 
 	routes := app.Routes()
-	routesByName := make(map[string]Route, len(routes))
-
-	for _, route := range routes {
-		if route.Name == "" {
-			panic(errors.New("luci: route must have a name"))
-		}
-
-		_, ok := routesByName[route.Name]
-		if ok {
-			panic(fmt.Errorf(`luci: route "%s" already exists`, route.Name))
-		}
-
-		if route.Pattern == "" {
-			panic(fmt.Errorf(`luci: route "%s" must have a pattern`, route.Name))
-		} else if route.Pattern[0] != '/' {
-			panic(fmt.Errorf(`luci: route "%s" pattern must begin with /`, route.Name))
-		}
-
-		if route.HandlerFunc == nil {
-			panic(fmt.Errorf(`luci: route "%s" must have a handler`, route.Name))
-		}
-
-		timeout := route.Timeout
-		if timeout == 0 {
-			timeout = config.RouteTimeout
-		}
-
-		router := router.With(
-			withResponseWriter,
-			withDuration,
-			withID,
-			withVars,
-			WithValue(requestRouteKey{}, route),
-			withLogger(config.Logger),
-			withTimeout(app.Error, timeout),
-			withRecover(app.Error),
-		)
-
-		for _, middleware := range appMiddlewares {
-			router.Use(middleware)
-		}
-
-		for _, middleware := range route.Middlewares {
-			router.Use(middleware)
-		}
-
-		if route.Method == "" {
-			router.HandleFunc(route.Pattern, route.HandlerFunc)
-		} else {
-			router.MethodFunc(route.Method, route.Pattern, route.HandlerFunc)
-		}
-
-		routesByName[route.Name] = route
-	}
-
-	server := &http.Server{
-		Addr:              config.Address,
-		Handler:           router,
-		ReadHeaderTimeout: config.ReadHeaderTimeout,
-	}
-
-	return &Server{
-		config:    config,
-		app:       app,
-		logger:    config.Logger,
-		server:    server,
-		routes:    routesByName,
+	server := &Server{
+		config: config,
+		app:    app,
+		logger: config.Logger,
+		server: &http.Server{
+			Addr:              config.Address,
+			Handler:           router,
+			ReadHeaderTimeout: config.ReadHeaderTimeout,
+		},
+		router:    router,
+		routes:    make(map[string]Route, len(routes)),
 		serveDone: make(chan error, 1),
 		started:   make(chan struct{}),
 	}
+
+	root := Route{Timeout: config.RouteTimeout}
+	for _, route := range routes {
+		server.registerRoute(route, root)
+	}
+
+	return server
 }
 
 // Route retrieves a defined route by name, and whether a route was found with the given name.
@@ -218,4 +173,96 @@ func (server *Server) wait(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (server *Server) registerRoute(route Route, parent Route) {
+	if len(route.Routes) > 0 {
+		switch {
+		case route.Name != "":
+			panic(errors.New("luci: route group must not have a name"))
+		case route.HandlerFunc != nil:
+			panic(errors.New("luci: route group must not have a handler"))
+		case route.Pattern == "":
+			panic(errors.New("luci: route group must have a pattern"))
+		case route.Pattern[0] != '/':
+			panic(errors.New("luci: route group pattern must begin with /"))
+		}
+
+		if route.Timeout == 0 {
+			route.Timeout = parent.Timeout
+		}
+
+		if route.Method == "" {
+			route.Method = parent.Method
+		}
+
+		middlewares := make(Middlewares, 0, len(parent.Middlewares)+len(route.Middlewares))
+		middlewares = append(middlewares, parent.Middlewares...)
+		route.Middlewares = append(middlewares, route.Middlewares...)
+
+		route.Pattern = parent.Pattern + route.Pattern
+
+		for _, child := range route.Routes {
+			server.registerRoute(child, route)
+		}
+
+		return
+	}
+
+	switch {
+	case route.Name == "":
+		panic(errors.New("luci: route must have a name"))
+	case route.HandlerFunc == nil:
+		panic(fmt.Errorf(`luci: route "%s" must have a handler`, route.Name))
+	case route.Pattern == "":
+		panic(fmt.Errorf(`luci: route "%s" must have a pattern`, route.Name))
+	case route.Pattern[0] != '/':
+		panic(fmt.Errorf(`luci: route "%s" pattern must begin with /`, route.Name))
+	}
+
+	_, ok := server.routes[route.Name]
+	if ok {
+		panic(fmt.Errorf(`luci: route "%s" already exists`, route.Name))
+	}
+
+	if route.Timeout == 0 {
+		route.Timeout = parent.Timeout
+	}
+
+	if route.Method == "" {
+		route.Method = parent.Method
+	}
+
+	middlewares := make(Middlewares, 0, len(parent.Middlewares)+len(route.Middlewares))
+	middlewares = append(middlewares, parent.Middlewares...)
+	route.Middlewares = append(middlewares, route.Middlewares...)
+
+	route.Pattern = parent.Pattern + route.Pattern
+	if route.Pattern != "/" && route.Pattern[len(route.Pattern)-1] == '/' {
+		route.Pattern = route.Pattern[:len(route.Pattern)-1]
+	}
+
+	server.routes[route.Name] = route
+
+	router := server.router.With(
+		withVars,
+		WithValue(requestRouteKey{}, route),
+		withLogger(server.config.Logger),
+		withTimeout(server.app.Error, route.Timeout),
+		withRecover(server.app.Error),
+	)
+
+	for _, middleware := range server.app.Middlewares() {
+		router.Use(middleware)
+	}
+
+	for _, middleware := range route.Middlewares {
+		router.Use(middleware)
+	}
+
+	if route.Method == "" {
+		router.HandleFunc(route.Pattern, route.HandlerFunc)
+	} else {
+		router.MethodFunc(route.Method, route.Pattern, route.HandlerFunc)
+	}
 }
