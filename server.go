@@ -41,7 +41,8 @@ func NewServer(config Config, app Application) *Server {
 
 	badRequestMiddlewares := append(Middlewares{
 		withLogger(config.Logger),
-		withRecover(app.Error),
+		withTimeout(fallbackErrorRespond, config.RouteTimeout),
+		withRecover(fallbackErrorRespond),
 	}, app.Middlewares()...)
 
 	router.MethodNotAllowed(badRequestMiddlewares.Handler(

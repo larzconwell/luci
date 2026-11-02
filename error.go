@@ -2,6 +2,7 @@ package luci
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 )
 
@@ -20,5 +21,18 @@ type ErrorHandlerFunc func(http.ResponseWriter, *http.Request, int, error)
 func errorRespond(errorHandler ErrorHandlerFunc, status int, err error) http.HandlerFunc {
 	return func(rw http.ResponseWriter, req *http.Request) {
 		errorHandler(rw, req, status, err)
+	}
+}
+
+func fallbackErrorRespond(rw http.ResponseWriter, req *http.Request, status int, err error) {
+	rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	rw.WriteHeader(status)
+
+	_, werr := rw.Write([]byte(err.Error()))
+	if err != nil {
+		Logger(req).With(
+			slog.Any("error", werr),
+			slog.Any("source_error", err),
+		).Error("failed to write response")
 	}
 }

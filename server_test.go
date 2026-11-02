@@ -650,7 +650,7 @@ func TestNewServer(t *testing.T) {
 			req, ok := args.Get(1).(*http.Request)
 			assert.True(t, ok, "2nd argument should be a request")
 
-			assert.IsType(t, new(responseWriter), rw)
+			assert.IsType(t, new(timeoutResponseWriter), rw)
 
 			assert.True(t, contextHasKey(req.Context(), durationKey{}), "duration key")
 			assert.True(t, contextHasKey(req.Context(), idKey{}), "id key")
@@ -689,7 +689,7 @@ func TestNewServer(t *testing.T) {
 			req, ok := args.Get(1).(*http.Request)
 			assert.True(t, ok, "2nd argument should be a request")
 
-			assert.IsType(t, new(responseWriter), rw)
+			assert.IsType(t, new(timeoutResponseWriter), rw)
 
 			assert.True(t, contextHasKey(req.Context(), durationKey{}), "duration key")
 			assert.True(t, contextHasKey(req.Context(), idKey{}), "id key")
