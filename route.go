@@ -53,9 +53,10 @@ func (route Route) String() string {
 	return fmt.Sprintf("%s %s %s", route.Name, route.Method, route.Pattern)
 }
 
-// Path builds a path from the routes pattern using the given variable values. Variable
-// values must be in the order defined by the routes pattern, and are validated against
-// the associated regex matcher if one exists.
+// Path builds a path from the routes pattern using the given variable values.
+//
+// Values must be in the order defined by the routes pattern, and are validated
+// against the associated regex matcher if one exists.
 func (route Route) Path(vals ...string) (string, error) {
 	if route.Pattern == "" {
 		return "", errors.New("luci: route pattern must not be empty")

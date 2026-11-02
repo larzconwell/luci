@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-// Server maintains the running state of an application.
+// Server contains the state of an application server.
 type Server struct {
 	config    Config
 	app       Application
@@ -26,6 +26,7 @@ type Server struct {
 }
 
 // NewServer creates a server for the given application using the given configuration.
+//
 // NewServer panics if any route does not have a name, the name is not unique, or if the
 // route doesn't have a handler defined.
 func NewServer(config Config, app Application) *Server {
@@ -89,7 +90,7 @@ func (server *Server) Address() string {
 	return server.address
 }
 
-// Run is a wrapper for (*luci.Server).Start and calling the returned wait
+// Run is a wrapper for [Server.Start] and calling the returned wait
 // function with the given context.
 func (server *Server) Run(ctx context.Context) error {
 	wait, err := server.Start(ctx)
@@ -107,7 +108,7 @@ func (server *Server) Run(ctx context.Context) error {
 // Start returns a wait function and once called it will block until context cancellation
 // occurs and begin a graceful shutdown up until the configured shutdown timeout has been
 // reached, once it has been exceeded the server forcefully shuts down and
-// ErrForcedShutdown is returned.
+// [ErrForcedShutdown] is returned.
 func (server *Server) Start(ctx context.Context) (func(context.Context) error, error) {
 	var config net.ListenConfig
 
