@@ -33,9 +33,9 @@ func run() int {
 		Logger:          logger,
 	})
 
-	err := app.ListenAndServe(ctx)
+	err := app.server.Run(ctx)
 	if err != nil {
-		logger.With(slog.Any("error", err)).Error("failed to listen and serve")
+		logger.With(slog.Any("error", err)).Error("failed to run server")
 		return 1
 	}
 

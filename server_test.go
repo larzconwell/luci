@@ -324,121 +324,6 @@ func TestNewServer(t *testing.T) {
 	})
 }
 
-func TestServerListenAndServe(t *testing.T) {
-	t.Parallel()
-
-	t.Run("listens on the configured address until the context is canceled", func(t *testing.T) {
-		t.Parallel()
-
-		var app TestApplication
-		app.On("Middlewares").Return(nil)
-		app.On("Routes").Return([]Route{
-			{
-				Name:    "status",
-				Method:  http.MethodGet,
-				Pattern: "/status",
-				HandlerFunc: func(rw http.ResponseWriter, _ *http.Request) {
-					rw.WriteHeader(http.StatusOK)
-				},
-			},
-		})
-
-		server := NewServer(Config{Address: ":0", Logger: noopLogger}, &app)
-		ctx, cancel := context.WithCancel(context.Background())
-		listenErr := make(chan error, 1)
-
-		go func() {
-			listenErr <- server.ListenAndServe(ctx)
-		}()
-
-		addr := server.Address()
-
-		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("http://%s/status", addr), nil)
-		assert.NoError(t, err)
-
-		res, err := http.DefaultClient.Do(req)
-		assert.NoError(t, err)
-
-		_, err = io.Copy(io.Discard, res.Body)
-		assert.NoError(t, err)
-
-		err = res.Body.Close()
-		assert.NoError(t, err)
-
-		assert.Equal(t, http.StatusOK, res.StatusCode)
-
-		cancel()
-		assert.NoError(t, <-listenErr)
-
-		res, err = http.DefaultClient.Do(req)
-		if res != nil {
-			_, err = io.Copy(io.Discard, res.Body)
-			assert.NoError(t, err)
-
-			err = res.Body.Close()
-			assert.NoError(t, err)
-		}
-
-		opErr := new(net.OpError)
-		assert.ErrorAs(t, err, &opErr)
-		assert.Equal(t, "dial", opErr.Op)
-
-		app.AssertExpectations(t)
-	})
-
-	t.Run("returns error when server shutdown takes longer than the timeout allows", func(t *testing.T) {
-		t.Parallel()
-
-		ctx, cancel := context.WithCancel(context.Background())
-
-		var app TestApplication
-		app.On("Middlewares").Return(nil)
-		app.On("Routes").Return([]Route{
-			{
-				Name:    "status",
-				Method:  http.MethodGet,
-				Pattern: "/status",
-				HandlerFunc: func(rw http.ResponseWriter, _ *http.Request) {
-					cancel()
-					<-time.After(200 * time.Millisecond)
-					rw.WriteHeader(http.StatusOK)
-				},
-			},
-		})
-
-		server := NewServer(Config{
-			Address:         ":0",
-			ShutdownTimeout: time.Millisecond,
-			Logger:          noopLogger,
-		}, &app)
-		listenErr := make(chan error, 1)
-
-		go func() {
-			listenErr <- server.ListenAndServe(ctx)
-		}()
-
-		addr := server.Address()
-
-		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("http://%s/status", addr), nil)
-		assert.NoError(t, err)
-
-		res, err := http.DefaultClient.Do(req)
-		assert.NoError(t, err)
-
-		_, err = io.Copy(io.Discard, res.Body)
-		assert.NoError(t, err)
-
-		err = res.Body.Close()
-		assert.NoError(t, err)
-
-		assert.Equal(t, http.StatusOK, res.StatusCode)
-
-		assert.ErrorIs(t, <-listenErr, ErrForcedShutdown)
-
-		app.AssertExpectations(t)
-	})
-}
-
 func TestServerRoute(t *testing.T) {
 	t.Parallel()
 
@@ -474,6 +359,178 @@ func TestServerRoute(t *testing.T) {
 
 	_, ok = server.Route("nonexistent_route")
 	assert.False(t, ok)
+}
+
+func TestServerAddress(t *testing.T) {
+	t.Parallel()
+
+	expected := "[::]:3579"
+	server := &Server{started: make(chan struct{}, 1)}
+
+	go func() {
+		<-time.After(200 * time.Millisecond)
+
+		server.address = expected
+		server.started <- struct{}{}
+	}()
+
+	actual := server.Address()
+	assert.Equal(t, expected, actual)
+	assert.Empty(t, server.started)
+}
+
+func TestServerStart(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns error when starting server on address already being listened on", func(t *testing.T) {
+		t.Parallel()
+
+		var app TestApplication
+		app.On("Middlewares").Return(nil)
+		app.On("Routes").Return(make([]Route, 0))
+
+		ctx, cancel := context.WithCancel(t.Context())
+
+		server1 := NewServer(Config{Address: ":0", Logger: noopLogger}, &app)
+		wait1, err := server1.Start(ctx)
+		assert.NoError(t, err)
+
+		defer func() {
+			cancel()
+			assert.NoError(t, wait1(ctx))
+		}()
+
+		server2 := NewServer(Config{Address: server1.Address(), Logger: noopLogger}, &app)
+		wait2, err := server2.Start(ctx)
+		assert.NotNil(t, err)
+		assert.Nil(t, wait2)
+	})
+
+	t.Run("sets address and closes started channel", func(t *testing.T) {
+		t.Parallel()
+
+		var app TestApplication
+		app.On("Middlewares").Return(nil)
+		app.On("Routes").Return(make([]Route, 0))
+
+		ctx, cancel := context.WithCancel(context.Background())
+
+		server := NewServer(Config{Address: ":0", Logger: noopLogger}, &app)
+		wait, err := server.Start(ctx)
+		assert.NoError(t, err)
+
+		defer func() {
+			cancel()
+			assert.NoError(t, wait(ctx))
+		}()
+
+		_, ok := <-server.started
+		assert.False(t, ok)
+
+		_, port, err := net.SplitHostPort(server.address)
+		assert.NoError(t, err)
+		assert.NotEqual(t, "0", port)
+	})
+
+	t.Run("handles requests on the created listener", func(t *testing.T) {
+		t.Parallel()
+
+		var app TestApplication
+		app.On("Middlewares").Return(nil)
+		app.On("Routes").Return([]Route{
+			{
+				Name:    "status",
+				Method:  http.MethodHead,
+				Pattern: "/status",
+				HandlerFunc: func(rw http.ResponseWriter, _ *http.Request) {
+					rw.WriteHeader(http.StatusOK)
+				},
+			},
+		})
+
+		ctx, cancel := context.WithCancel(context.Background())
+
+		server := NewServer(Config{Address: ":0", Logger: noopLogger}, &app)
+		wait, err := server.Start(ctx)
+		assert.NoError(t, err)
+
+		defer func() {
+			cancel()
+			assert.NoError(t, wait(ctx))
+		}()
+
+		addr := server.Address()
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodHead, fmt.Sprintf("http://%s/status", addr), nil)
+		assert.NoError(t, err)
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+
+		_, err = io.Copy(io.Discard, res.Body)
+		assert.NoError(t, err)
+
+		err = res.Body.Close()
+		assert.NoError(t, err)
+
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+
+		app.AssertExpectations(t)
+	})
+
+	t.Run("wait", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("returns ErrForcedShutdown if server shutdown exceeds shutdown timeout", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+
+			var app TestApplication
+			app.On("Middlewares").Return(nil)
+			app.On("Routes").Return([]Route{
+				{
+					Name:    "status",
+					Method:  http.MethodHead,
+					Pattern: "/status",
+					HandlerFunc: func(rw http.ResponseWriter, _ *http.Request) {
+						cancel()
+						<-time.After(200 * time.Millisecond)
+						rw.WriteHeader(http.StatusOK)
+					},
+				},
+			})
+
+			server := NewServer(Config{
+				Address:         ":0",
+				ShutdownTimeout: time.Millisecond,
+				Logger:          noopLogger,
+			}, &app)
+			wait, err := server.Start(ctx)
+			assert.NoError(t, err)
+
+			shutdown := make(chan error, 1)
+			go func() {
+				shutdown <- wait(ctx)
+			}()
+
+			addr := server.Address()
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodHead, fmt.Sprintf("http://%s/status", addr), nil)
+			assert.NoError(t, err)
+
+			res, err := http.DefaultClient.Do(req)
+			assert.NoError(t, err)
+
+			_, err = io.Copy(io.Discard, res.Body)
+			assert.NoError(t, err)
+
+			err = res.Body.Close()
+			assert.NoError(t, err)
+
+			assert.Equal(t, http.StatusOK, res.StatusCode)
+
+			assert.ErrorIs(t, <-shutdown, ErrForcedShutdown)
+		})
+	})
 }
 
 func contextHasKey(ctx context.Context, key any) bool {

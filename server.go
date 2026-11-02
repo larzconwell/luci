@@ -13,13 +13,14 @@ import (
 
 // Server maintains the running state of an application.
 type Server struct {
-	config  Config
-	app     Application
-	logger  *slog.Logger
-	server  *http.Server
-	routes  map[string]Route
-	started chan struct{}
-	address string
+	config    Config
+	app       Application
+	logger    *slog.Logger
+	server    *http.Server
+	routes    map[string]Route
+	serveDone chan error
+	started   chan struct{}
+	address   string
 }
 
 // NewServer creates a server for the given application using the given configuration.
@@ -103,76 +104,20 @@ func NewServer(config Config, app Application) *Server {
 	}
 
 	return &Server{
-		config:  config,
-		app:     app,
-		logger:  config.Logger,
-		server:  server,
-		routes:  routesByName,
-		started: make(chan struct{}),
+		config:    config,
+		app:       app,
+		logger:    config.Logger,
+		server:    server,
+		routes:    routesByName,
+		serveDone: make(chan error, 1),
+		started:   make(chan struct{}),
 	}
 }
 
-// ListenAndServe listens on the configured address and serves requests until the given context has been cancelled.
-// ListenAndServe will gracefully shutdown on context cancellation up until the configured shutdown timeout has been
-// reached, if the shutdown timeout is reached ErrForcedShutdown is returned.
-func (server *Server) ListenAndServe(ctx context.Context) error {
-	var config net.ListenConfig
-
-	listener, err := config.Listen(ctx, "tcp", server.config.Address)
-	if err != nil {
-		return fmt.Errorf("luci: listen: %w", err)
-	}
-	// listener closed via (*http.Server).Serve
-
-	server.address = listener.Addr().String()
-	close(server.started)
-
-	logger := server.logger.WithGroup("server").With(slog.String("address", server.address))
-	logger.Info("server started")
-
-	done := make(chan error, 1)
-
-	// Disable context checking, we intentionally use a background context here to
-	// build the shutdown context, the top level context tells when to start the
-	// shutdown but does not include the shutdown itself.
-	//nolint:contextcheck
-	//gosec:disable G118
-	go func() {
-		select {
-		// The only time this happens is from a close, so no error to check.
-		//nolint:errcheck
-		case <-done:
-			return
-		case <-ctx.Done():
-		}
-
-		logger.With(
-			slog.String("timeout", server.config.ShutdownTimeout.String()),
-		).Info("server closing")
-
-		ctx, cancel := context.WithTimeout(context.Background(), server.config.ShutdownTimeout)
-		defer cancel()
-
-		done <- server.server.Shutdown(ctx)
-	}()
-
-	err = server.server.Serve(listener)
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		close(done)
-		return fmt.Errorf("luci: serve: %w", err)
-	}
-
-	err = <-done
-
-	logger.Info("server closed")
-
-	if errors.Is(err, context.DeadlineExceeded) {
-		return ErrForcedShutdown
-	} else if err != nil {
-		return fmt.Errorf("luci: shutdown: %w", err)
-	}
-
-	return nil
+// Route retrieves a defined route by name, and whether a route was found with the given name.
+func (server *Server) Route(name string) (Route, bool) {
+	route, ok := server.routes[name]
+	return route, ok
 }
 
 // Address can be used to retrieve the address the server is listening on.
@@ -182,8 +127,89 @@ func (server *Server) Address() string {
 	return server.address
 }
 
-// Route retrieves a defined route by name, and whether a route was found with the given name.
-func (server *Server) Route(name string) (Route, bool) {
-	route, ok := server.routes[name]
-	return route, ok
+// Run is a wrapper for (*luci.Server).Start and calling the returned wait
+// function with the given context.
+func (server *Server) Run(ctx context.Context) error {
+	wait, err := server.Start(ctx)
+	if err != nil {
+		return err
+	}
+
+	return wait(ctx)
+}
+
+// Start listens on the configured address and begins serving requests in the background.
+// The context given to Start is only used for the duration of creating the listener and
+// does not affected the lifetime of the running server.
+//
+// Start returns a wait function and once called it will block until context cancellation
+// occurs and begin a graceful shutdown up until the configured shutdown timeout has been
+// reached, once it has been exceeded the server forcefully shuts down and
+// ErrForcedShutdown is returned.
+func (server *Server) Start(ctx context.Context) (func(context.Context) error, error) {
+	var config net.ListenConfig
+
+	listener, err := config.Listen(ctx, "tcp", server.config.Address)
+	if err != nil {
+		return nil, fmt.Errorf("luci: listen: %w", err)
+	}
+	// No need to explicitly close, handled via (*http.Server).Serve
+
+	server.address = listener.Addr().String()
+	close(server.started)
+
+	server.logger = server.logger.WithGroup("server").With(slog.String("address", server.address))
+	server.logger.Info("server started")
+
+	go func() {
+		err := server.server.Serve(listener)
+		if errors.Is(err, http.ErrServerClosed) {
+			err = nil
+		} else if err != nil {
+			err = fmt.Errorf("luci: serve: %w", err)
+		}
+
+		server.serveDone <- err
+	}()
+
+	return server.wait, nil
+}
+
+func (server *Server) wait(ctx context.Context) error {
+	// Wait for either (*http.Server).Serve to fail or for the context to finish.
+	select {
+	case err := <-server.serveDone:
+		return err
+	case <-ctx.Done():
+	}
+
+	server.logger.With(
+		slog.String("timeout", server.config.ShutdownTimeout.String()),
+	).Info("server shutting down")
+
+	ctx, cancel := context.WithTimeout(context.Background(), server.config.ShutdownTimeout)
+	defer cancel()
+
+	// Disable context checking, we intentionally use a background context to build
+	// the shutdown context, the top level context tells when to start the shutdown
+	// but does not include the shutdown itself.
+	//nolint:contextcheck
+	//gosec:disable G118
+	err := server.server.Shutdown(ctx)
+
+	// If (*http.Server).Shutdown triggered (*http.Server).Serve to return there
+	// should be no error, if there is the (*http.Server).Shutdown error is more
+	// important to surface.
+	//nolint:errcheck
+	<-server.serveDone
+
+	server.logger.Info("server shut down")
+
+	if errors.Is(err, context.DeadlineExceeded) {
+		return ErrForcedShutdown
+	} else if err != nil {
+		return fmt.Errorf("luci: shutdown: %w", err)
+	}
+
+	return nil
 }

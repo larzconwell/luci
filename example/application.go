@@ -4,7 +4,6 @@ import (
 	"context"
 	"embed"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"text/template"
@@ -56,15 +55,6 @@ func NewApplication(config luci.Config) *Application {
 	app.render.CompileTemplates()
 
 	return app
-}
-
-func (app *Application) ListenAndServe(ctx context.Context) error {
-	err := app.server.ListenAndServe(ctx)
-	if err != nil {
-		return fmt.Errorf("serve: %w", err)
-	}
-
-	return nil
 }
 
 func (app *Application) Routes() []luci.Route {
