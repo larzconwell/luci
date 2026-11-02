@@ -29,7 +29,7 @@ type Server struct {
 func NewServer(config Config, app Application) *Server {
 	config = buildConfig(config)
 
-	mux := chi.NewMux()
+	router := chi.NewRouter()
 
 	appMiddlewares := app.Middlewares()
 	badRequestMiddlewares := append(Middlewares{
@@ -40,10 +40,10 @@ func NewServer(config Config, app Application) *Server {
 		withRecover(app.Error),
 	}, appMiddlewares...)
 
-	mux.MethodNotAllowed(badRequestMiddlewares.Handler(
+	router.MethodNotAllowed(badRequestMiddlewares.Handler(
 		errorRespond(app.Error, http.StatusMethodNotAllowed, ErrMethodNotAllowed),
 	).ServeHTTP)
-	mux.NotFound(badRequestMiddlewares.Handler(
+	router.NotFound(badRequestMiddlewares.Handler(
 		errorRespond(app.Error, http.StatusNotFound, ErrNotFound),
 	).ServeHTTP)
 
@@ -60,6 +60,12 @@ func NewServer(config Config, app Application) *Server {
 			panic(fmt.Errorf(`luci: route "%s" already exists`, route.Name))
 		}
 
+		if route.Pattern == "" {
+			panic(fmt.Errorf(`luci: route "%s" must have a pattern`, route.Name))
+		} else if route.Pattern[0] != '/' {
+			panic(fmt.Errorf(`luci: route "%s" pattern must begin with /`, route.Name))
+		}
+
 		if route.HandlerFunc == nil {
 			panic(fmt.Errorf(`luci: route "%s" must have a handler`, route.Name))
 		}
@@ -69,7 +75,7 @@ func NewServer(config Config, app Application) *Server {
 			timeout = config.RouteTimeout
 		}
 
-		router := mux.With(
+		router := router.With(
 			withResponseWriter,
 			withDuration,
 			withID,
@@ -99,7 +105,7 @@ func NewServer(config Config, app Application) *Server {
 
 	server := &http.Server{
 		Addr:              config.Address,
-		Handler:           mux,
+		Handler:           router,
 		ReadHeaderTimeout: config.ReadHeaderTimeout,
 	}
 

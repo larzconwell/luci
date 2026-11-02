@@ -109,6 +109,45 @@ func TestNewServer(t *testing.T) {
 		app.AssertExpectations(t)
 	})
 
+	t.Run("panics if route has no pattern", func(t *testing.T) {
+		t.Parallel()
+
+		var app TestApplication
+		app.On("Middlewares").Return(nil)
+		app.On("Routes").Return([]Route{
+			{
+				Name:        "status",
+				HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
+			},
+		})
+
+		assert.PanicsWithError(t, `luci: route "status" must have a pattern`, func() {
+			NewServer(testConfig, &app)
+		})
+
+		app.AssertExpectations(t)
+	})
+
+	t.Run("panics if route pattern doesn't begin with slash", func(t *testing.T) {
+		t.Parallel()
+
+		var app TestApplication
+		app.On("Middlewares").Return(nil)
+		app.On("Routes").Return([]Route{
+			{
+				Name:        "status",
+				Pattern:     "status",
+				HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
+			},
+		})
+
+		assert.PanicsWithError(t, `luci: route "status" pattern must begin with /`, func() {
+			NewServer(testConfig, &app)
+		})
+
+		app.AssertExpectations(t)
+	})
+
 	t.Run("panics if route has no handler", func(t *testing.T) {
 		t.Parallel()
 
