@@ -82,8 +82,8 @@ func (app *Application) Middlewares() luci.Middlewares {
 }
 
 func (app *Application) Error(rw http.ResponseWriter, req *http.Request, status int, err error) {
-	createPostRoute, _ := app.server.Route(PostsCreateGET)
-	getAllPostsRoute, _ := app.server.Route(PostsGetAll)
+	createPostRoute := app.server.MustRoute(PostsCreateGET).MustPath()
+	getAllPostsRoute := app.server.MustRoute(PostsGetAll).MustPath()
 
 	if errors.Is(err, luci.ErrNotFound) {
 		err = errors.New("not found")
@@ -94,8 +94,8 @@ func (app *Application) Error(rw http.ResponseWriter, req *http.Request, status 
 	rerr := app.render.HTML(rw, status, "error", TemplateData{
 		Title: "Error",
 		Links: [][2]string{
-			{createPostRoute.Pattern, "Create"},
-			{getAllPostsRoute.Pattern, "Posts"},
+			{createPostRoute, "Create"},
+			{getAllPostsRoute, "Posts"},
 		},
 		Data: struct {
 			Status int
@@ -114,9 +114,9 @@ func (app *Application) Error(rw http.ResponseWriter, req *http.Request, status 
 }
 
 func (app *Application) Index(rw http.ResponseWriter, req *http.Request) {
-	getAllPostsRoute, _ := app.server.Route(PostsGetAll)
+	getAllPostsRoute := app.server.MustRoute(PostsGetAll).MustPath()
 
-	http.Redirect(rw, req, getAllPostsRoute.Pattern, http.StatusFound)
+	http.Redirect(rw, req, getAllPostsRoute, http.StatusFound)
 }
 
 func (app *Application) Status(rw http.ResponseWriter, req *http.Request) {
@@ -126,32 +126,32 @@ func (app *Application) Status(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (app *Application) PostsGetAll(rw http.ResponseWriter, req *http.Request) {
-	createPostRoute, _ := app.server.Route(PostsCreateGET)
+	createPostRoute := app.server.MustRoute(PostsCreateGET).MustPath()
 	posts := app.db.GetAll()
 
 	app.respondHTML(rw, req, "posts_get_all", TemplateData{
 		Title: "Posts",
 		Links: [][2]string{
-			{createPostRoute.Pattern, "Create"},
+			{createPostRoute, "Create"},
 		},
 		Data: posts,
 	})
 }
 
 func (app *Application) PostsCreateGET(rw http.ResponseWriter, req *http.Request) {
-	getAllPostsRoute, _ := app.server.Route(PostsGetAll)
+	getAllPostsRoute := app.server.MustRoute(PostsGetAll).MustPath()
 
 	app.respondHTML(rw, req, "posts_create", TemplateData{
 		Title: "Create",
 		Links: [][2]string{
-			{getAllPostsRoute.Pattern, "Posts"},
+			{getAllPostsRoute, "Posts"},
 		},
 	})
 }
 
 func (app *Application) PostsCreatePOST(rw http.ResponseWriter, req *http.Request) {
-	getPostRoute, _ := app.server.Route(PostsGet)
 	id := uuid.NewV7().String()
+	getPostRoute := app.server.MustRoute(PostsGet).MustPath(id)
 
 	title := req.FormValue("title")
 	if title == "" {
@@ -171,18 +171,6 @@ func (app *Application) PostsCreatePOST(rw http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	getPost, err := getPostRoute.Path(id)
-	if err != nil {
-		app.Error(rw, req, http.StatusInternalServerError, errors.New("failed to create post"))
-
-		luci.Logger(req).With(
-			slog.Any("error", err),
-			slog.String("author", author),
-		).Error("failed to build get post link")
-
-		return
-	}
-
 	post := Post{
 		ID:     id,
 		Title:  title,
@@ -195,7 +183,6 @@ func (app *Application) PostsCreatePOST(rw http.ResponseWriter, req *http.Reques
 		app.Error(rw, req, http.StatusInternalServerError, errors.New("failed to create post"))
 
 		luci.Logger(req).With(
-			slog.Any("error", err),
 			slog.String("author", author),
 			slog.String("id", post.ID),
 		).Error("failed to create post")
@@ -203,26 +190,14 @@ func (app *Application) PostsCreatePOST(rw http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	http.Redirect(rw, req, getPost, http.StatusSeeOther)
+	http.Redirect(rw, req, getPostRoute, http.StatusSeeOther)
 }
 
 func (app *Application) PostsGet(rw http.ResponseWriter, req *http.Request) {
-	updatePostRoute, _ := app.server.Route(PostsUpdateGET)
-	createPostRoute, _ := app.server.Route(PostsCreateGET)
-	getAllPostsRoute, _ := app.server.Route(PostsGetAll)
 	id := luci.Var(req, "id")
-
-	updatePost, err := updatePostRoute.Path(id)
-	if err != nil {
-		app.Error(rw, req, http.StatusInternalServerError, errors.New("internal server error"))
-
-		luci.Logger(req).With(
-			slog.Any("error", err),
-			slog.String("id", id),
-		).Error("failed to build update post link")
-
-		return
-	}
+	updatePostRoute := app.server.MustRoute(PostsUpdateGET).MustPath(id)
+	createPostRoute := app.server.MustRoute(PostsCreateGET).MustPath()
+	getAllPostsRoute := app.server.MustRoute(PostsGetAll).MustPath()
 
 	post, found := app.db.Get(id)
 	if !found {
@@ -233,31 +208,19 @@ func (app *Application) PostsGet(rw http.ResponseWriter, req *http.Request) {
 	app.respondHTML(rw, req, "posts_get", TemplateData{
 		Title: post.Title,
 		Links: [][2]string{
-			{updatePost, "Update"},
-			{createPostRoute.Pattern, "Create"},
-			{getAllPostsRoute.Pattern, "Posts"},
+			{updatePostRoute, "Update"},
+			{createPostRoute, "Create"},
+			{getAllPostsRoute, "Posts"},
 		},
 		Data: post,
 	})
 }
 
 func (app *Application) PostsUpdateGET(rw http.ResponseWriter, req *http.Request) {
-	createPostRoute, _ := app.server.Route(PostsCreateGET)
-	getPostRoute, _ := app.server.Route(PostsGet)
-	getAllPostsRoute, _ := app.server.Route(PostsGetAll)
 	id := luci.Var(req, "id")
-
-	getPost, err := getPostRoute.Path(id)
-	if err != nil {
-		app.Error(rw, req, http.StatusInternalServerError, errors.New("internal server error"))
-
-		luci.Logger(req).With(
-			slog.Any("error", err),
-			slog.String("id", id),
-		).Error("failed to build get post link")
-
-		return
-	}
+	createPostRoute := app.server.MustRoute(PostsCreateGET).MustPath()
+	getPostRoute := app.server.MustRoute(PostsGet).MustPath(id)
+	getAllPostsRoute := app.server.MustRoute(PostsGetAll).MustPath()
 
 	post, found := app.db.Get(id)
 	if !found {
@@ -268,17 +231,17 @@ func (app *Application) PostsUpdateGET(rw http.ResponseWriter, req *http.Request
 	app.respondHTML(rw, req, "posts_update", TemplateData{
 		Title: "Update",
 		Links: [][2]string{
-			{createPostRoute.Pattern, "Create"},
-			{getPost, "Post"},
-			{getAllPostsRoute.Pattern, "Posts"},
+			{createPostRoute, "Create"},
+			{getPostRoute, "Post"},
+			{getAllPostsRoute, "Posts"},
 		},
 		Data: post,
 	})
 }
 
 func (app *Application) PostsUpdatePOST(rw http.ResponseWriter, req *http.Request) {
-	getPostRoute, _ := app.server.Route(PostsGet)
 	id := luci.Var(req, "id")
+	getPostRoute := app.server.MustRoute(PostsGet).MustPath(id)
 
 	title := req.FormValue("title")
 	if title == "" {
@@ -289,18 +252,6 @@ func (app *Application) PostsUpdatePOST(rw http.ResponseWriter, req *http.Reques
 	link := req.FormValue("link")
 	if link == "" {
 		app.Error(rw, req, http.StatusBadRequest, errors.New("link is required"))
-		return
-	}
-
-	getPost, err := getPostRoute.Path(id)
-	if err != nil {
-		app.Error(rw, req, http.StatusInternalServerError, errors.New("failed to update post"))
-
-		luci.Logger(req).With(
-			slog.Any("error", err),
-			slog.String("id", id),
-		).Error("failed to build get post link")
-
 		return
 	}
 
@@ -317,7 +268,7 @@ func (app *Application) PostsUpdatePOST(rw http.ResponseWriter, req *http.Reques
 
 	// luci.Route.Path calls url.PathEscape on provided route values.
 	//gosec:disable G710
-	http.Redirect(rw, req, getPost, http.StatusSeeOther)
+	http.Redirect(rw, req, getPostRoute, http.StatusSeeOther)
 }
 
 func (app *Application) respondJSON(rw http.ResponseWriter, req *http.Request, value any) {

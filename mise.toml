@@ -17,3 +17,10 @@ run = "go test -timeout 1m -race ./..."
 [tasks.lint]
 description = "Lint code"
 run = "golangci-lint run"
+
+[tasks.example]
+description = "Run example project"
+run = [
+  "go build -o example/example ./example",
+  "./example/example"
+]

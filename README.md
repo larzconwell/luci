@@ -16,6 +16,8 @@ go get github.com/larzconwell/luci
 ## Example
 See [the example project](https://github.com/larzconwell/luci/tree/main/example) for a simple example using all of the functionality `luci` provides.
 
+Running `mise example` will also build and run the example project.
+
 # Developing `luci`
 
 1. `mise install` - Install build dependencies
