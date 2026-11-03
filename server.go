@@ -79,6 +79,16 @@ func (server *Server) Route(name string) (Route, bool) {
 	return route, ok
 }
 
+// MustRoute retrieves a defined route by name, or panics if no route exists with the given name.
+func (server *Server) MustRoute(name string) Route {
+	route, ok := server.Route(name)
+	if !ok {
+		panic(fmt.Errorf(`luci: route "%s" does not exist`, name))
+	}
+
+	return route
+}
+
 // Address returns the address the server is listening once it has been started.
 func (server *Server) Address() string {
 	return server.address

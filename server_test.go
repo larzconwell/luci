@@ -737,6 +737,31 @@ func TestServerRoute(t *testing.T) {
 	assert.False(t, ok)
 }
 
+func TestServerMustRoute(t *testing.T) {
+	t.Parallel()
+
+	var app TestApplication
+	app.On("Middlewares").Return(nil)
+	app.On("Routes").Return([]Route{
+		{
+			Name:        "all_status",
+			Pattern:     "/status",
+			HandlerFunc: func(_ http.ResponseWriter, _ *http.Request) {},
+		},
+	})
+
+	server := NewServer(testConfig, &app)
+
+	app.AssertExpectations(t)
+
+	route := server.MustRoute("all_status")
+	assert.Equal(t, "all_status", route.Name)
+
+	assert.PanicsWithError(t, `luci: route "nonexistent_route" does not exist`, func() {
+		server.MustRoute("nonexistent_route")
+	})
+}
+
 func TestServerAddress(t *testing.T) {
 	t.Parallel()
 
