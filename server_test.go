@@ -52,16 +52,8 @@ func TestNewServer(t *testing.T) {
 		assert.Equal(t, testConfig, server.config)
 		assert.Equal(t, &app, server.app)
 		assert.Equal(t, testConfig.Logger, server.logger)
-		assert.Equal(t, &http.Server{
-			Addr:              testConfig.Address,
-			Handler:           server.server.Handler,
-			ReadHeaderTimeout: testConfig.ReadHeaderTimeout,
-		}, server.server)
-		assert.NotNil(t, server.server.Handler)
 		assert.NotNil(t, server.router)
-		assert.Same(t, server.router, server.server.Handler)
 		assert.NotNil(t, server.routes)
-		assert.NotNil(t, server.started)
 	})
 
 	t.Run("registering route groups", func(t *testing.T) {
@@ -453,7 +445,7 @@ func TestNewServer(t *testing.T) {
 			recorder := httptest.NewRecorder()
 			request := httptest.NewRequestWithContext(t.Context(), method, "/internal/status/", nil)
 
-			server.server.Handler.ServeHTTP(recorder, request)
+			server.router.ServeHTTP(recorder, request)
 
 			expected := http.StatusOK
 
@@ -524,7 +516,7 @@ func TestNewServer(t *testing.T) {
 			recorder := httptest.NewRecorder()
 			request := httptest.NewRequestWithContext(t.Context(), method, "/method/inherit", nil)
 
-			server.server.Handler.ServeHTTP(recorder, request)
+			server.router.ServeHTTP(recorder, request)
 
 			expected := http.StatusMethodNotAllowed
 			if method == http.MethodGet {
@@ -538,7 +530,7 @@ func TestNewServer(t *testing.T) {
 			recorder := httptest.NewRecorder()
 			request := httptest.NewRequestWithContext(t.Context(), method, "/method/override", nil)
 
-			server.server.Handler.ServeHTTP(recorder, request)
+			server.router.ServeHTTP(recorder, request)
 
 			expected := http.StatusMethodNotAllowed
 			if method == http.MethodHead {
@@ -622,7 +614,7 @@ func TestNewServer(t *testing.T) {
 
 				recorder := httptest.NewRecorder()
 				request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, route.Pattern, nil)
-				server.server.Handler.ServeHTTP(recorder, request)
+				server.router.ServeHTTP(recorder, request)
 
 				app.AssertExpectations(t)
 			})
@@ -663,7 +655,7 @@ func TestNewServer(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/status", nil)
 
-		server.server.Handler.ServeHTTP(recorder, request)
+		server.router.ServeHTTP(recorder, request)
 
 		app.AssertExpectations(t)
 	})
@@ -702,7 +694,7 @@ func TestNewServer(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/notfound", nil)
 
-		server.server.Handler.ServeHTTP(recorder, request)
+		server.router.ServeHTTP(recorder, request)
 
 		app.AssertExpectations(t)
 	})
@@ -748,19 +740,10 @@ func TestServerRoute(t *testing.T) {
 func TestServerAddress(t *testing.T) {
 	t.Parallel()
 
-	expected := "[::]:3579"
-	server := &Server{started: make(chan struct{}, 1)}
+	server := &Server{address: "[::]:3579"}
+	address := server.Address()
 
-	go func() {
-		<-time.After(time.Millisecond * 200)
-
-		server.address = expected
-		server.started <- struct{}{}
-	}()
-
-	actual := server.Address()
-	assert.Equal(t, expected, actual)
-	assert.Empty(t, server.started)
+	assert.Equal(t, "[::]:3579", address)
 }
 
 func TestServerStart(t *testing.T) {
@@ -790,7 +773,7 @@ func TestServerStart(t *testing.T) {
 		assert.Nil(t, wait2)
 	})
 
-	t.Run("sets address and closes started channel", func(t *testing.T) {
+	t.Run("sets address", func(t *testing.T) {
 		t.Parallel()
 
 		var app TestApplication
@@ -807,9 +790,6 @@ func TestServerStart(t *testing.T) {
 			cancel()
 			assert.NoError(t, wait(ctx))
 		}()
-
-		_, ok := <-server.started
-		assert.False(t, ok)
 
 		_, port, err := net.SplitHostPort(server.address)
 		assert.NoError(t, err)

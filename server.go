@@ -12,17 +12,20 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
+type state struct {
+	logger *slog.Logger
+	server *http.Server
+	done   chan error
+}
+
 // Server contains the state of an application server.
 type Server struct {
-	config    Config
-	app       Application
-	logger    *slog.Logger
-	server    *http.Server
-	router    chi.Router
-	routes    map[string]Route
-	serveDone chan error
-	started   chan struct{}
-	address   string
+	config  Config
+	app     Application
+	logger  *slog.Logger
+	router  chi.Router
+	routes  map[string]Route
+	address string
 }
 
 // NewServer creates a server for the given application using the given configuration.
@@ -58,15 +61,8 @@ func NewServer(config Config, app Application) *Server {
 		config: config,
 		app:    app,
 		logger: config.Logger,
-		server: &http.Server{
-			Addr:              config.Address,
-			Handler:           router,
-			ReadHeaderTimeout: config.ReadHeaderTimeout,
-		},
-		router:    router,
-		routes:    make(map[string]Route, len(routes)),
-		serveDone: make(chan error, 1),
-		started:   make(chan struct{}),
+		router: router,
+		routes: make(map[string]Route, len(routes)),
 	}
 
 	root := Route{Timeout: config.RouteTimeout}
@@ -83,10 +79,8 @@ func (server *Server) Route(name string) (Route, bool) {
 	return route, ok
 }
 
-// Address can be used to retrieve the address the server is listening on.
-// Address blocks until the server has begun listening on the address.
+// Address returns the address the server is listening once it has been started.
 func (server *Server) Address() string {
-	<-server.started
 	return server.address
 }
 
@@ -119,62 +113,73 @@ func (server *Server) Start(ctx context.Context) (func(context.Context) error, e
 	// No need to explicitly close, handled via (*http.Server).Serve
 
 	server.address = listener.Addr().String()
-	close(server.started)
 
-	server.logger = server.logger.WithGroup("server").With(slog.String("address", server.address))
-	server.logger.Info("server started")
+	state := &state{
+		logger: server.logger.WithGroup("server").With(slog.String("address", server.address)),
+		server: &http.Server{
+			Addr:              server.address,
+			Handler:           server.router,
+			ReadHeaderTimeout: server.config.ReadHeaderTimeout,
+		},
+		done: make(chan error, 1),
+	}
+	state.logger.Info("server started")
 
 	go func() {
-		err := server.server.Serve(listener)
+		err := state.server.Serve(listener)
 		if errors.Is(err, http.ErrServerClosed) {
 			err = nil
 		} else if err != nil {
 			err = fmt.Errorf("luci: serve: %w", err)
 		}
 
-		server.serveDone <- err
+		state.done <- err
 	}()
 
-	return server.wait, nil
+	return server.wait(state), nil
 }
 
-func (server *Server) wait(ctx context.Context) error {
-	// Wait for either (*http.Server).Serve to fail or for the context to finish.
-	select {
-	case err := <-server.serveDone:
-		return err
-	case <-ctx.Done():
+func (server *Server) wait(state *state) func(context.Context) error {
+	return func(ctx context.Context) error {
+		// Wait for either (*http.Server).Serve to fail or for the context to finish.
+		select {
+		case err := <-state.done:
+			return err
+		case <-ctx.Done():
+		}
+
+		state.logger.With(
+			slog.String("timeout", server.config.ShutdownTimeout.String()),
+		).Info("server shutting down")
+
+		ctx, cancel := context.WithTimeout(context.Background(), server.config.ShutdownTimeout)
+		defer cancel()
+
+		// Disable context checking, we intentionally use a background context to build
+		// the shutdown context, the top level context tells when to start the shutdown
+		// but does not include the shutdown itself.
+		//nolint:contextcheck
+		//gosec:disable G118
+		err := state.server.Shutdown(ctx)
+
+		// If (*http.Server).Shutdown triggered (*http.Server).Serve to return there
+		// should be no error, if there is the (*http.Server).Shutdown error is more
+		// important to surface.
+		//nolint:errcheck
+		<-state.done
+
+		state.logger.Info("server shut down")
+
+		server.address = ""
+
+		if errors.Is(err, context.DeadlineExceeded) {
+			return ErrForcedShutdown
+		} else if err != nil {
+			return fmt.Errorf("luci: shutdown: %w", err)
+		}
+
+		return nil
 	}
-
-	server.logger.With(
-		slog.String("timeout", server.config.ShutdownTimeout.String()),
-	).Info("server shutting down")
-
-	ctx, cancel := context.WithTimeout(context.Background(), server.config.ShutdownTimeout)
-	defer cancel()
-
-	// Disable context checking, we intentionally use a background context to build
-	// the shutdown context, the top level context tells when to start the shutdown
-	// but does not include the shutdown itself.
-	//nolint:contextcheck
-	//gosec:disable G118
-	err := server.server.Shutdown(ctx)
-
-	// If (*http.Server).Shutdown triggered (*http.Server).Serve to return there
-	// should be no error, if there is the (*http.Server).Shutdown error is more
-	// important to surface.
-	//nolint:errcheck
-	<-server.serveDone
-
-	server.logger.Info("server shut down")
-
-	if errors.Is(err, context.DeadlineExceeded) {
-		return ErrForcedShutdown
-	} else if err != nil {
-		return fmt.Errorf("luci: shutdown: %w", err)
-	}
-
-	return nil
 }
 
 func (server *Server) registerRoute(route Route, parent Route) {
