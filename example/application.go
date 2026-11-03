@@ -9,7 +9,7 @@ import (
 	"text/template"
 	"uuid"
 
-	"github.com/larzconwell/luci"
+	"github.com/larzconwell/luci/v2"
 	"github.com/unrolled/render"
 )
 

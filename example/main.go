@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/larzconwell/luci"
+	"github.com/larzconwell/luci/v2"
 )
 
 func main() {

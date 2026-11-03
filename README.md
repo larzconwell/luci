@@ -10,7 +10,7 @@
 
 ## Installing
 ```shell
-go get github.com/larzconwell/luci
+go get github.com/larzconwell/luci/v2
 ```
 
 ## Example

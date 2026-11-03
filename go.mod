@@ -1,4 +1,4 @@
-module github.com/larzconwell/luci
+module github.com/larzconwell/luci/v2
 
 go 1.27.3
 
