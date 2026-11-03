@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-BSD_2--Clause_+_Patent-blue.svg)](https://github.com/larzconwell/luci/blob/main/LICENSE)
 [![Lint/Test](https://github.com/larzconwell/luci/actions/workflows/checks.yml/badge.svg)](https://github.com/larzconwell/luci/actions)
-[![Package Reference](https://pkg.go.dev/badge/github.com/larzconwell/luci.svg)](https://pkg.go.dev/github.com/larzconwell/luci)
+[![Package Reference](https://pkg.go.dev/badge/github.com/larzconwell/luci.svg)](https://pkg.go.dev/github.com/larzconwell/luci/v2)
 
 `luci` is a Go module to create web services quickly and painlessly.
 
