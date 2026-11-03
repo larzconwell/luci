@@ -116,13 +116,6 @@ func TestRoutePath(t *testing.T) {
 			expectedPath: "/anon/abc123",
 		},
 		{
-			expectedErr: errors.New("luci: route pattern must not be empty"),
-		},
-		{
-			route:       Route{Pattern: "pattern"},
-			expectedErr: errors.New("luci: route pattern must begin with /"),
-		},
-		{
 			route:       Route{Pattern: "/user/{user"},
 			vals:        []string{"luci"},
 			expectedErr: errors.New("luci: invalid route pattern"),

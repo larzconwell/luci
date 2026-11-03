@@ -58,14 +58,6 @@ func (route Route) String() string {
 // Values must be in the order defined by the routes pattern, and are validated
 // against the associated regex matcher if one exists.
 func (route Route) Path(vals ...string) (string, error) {
-	if route.Pattern == "" {
-		return "", errors.New("luci: route pattern must not be empty")
-	}
-
-	if route.Pattern[0] != '/' {
-		return "", errors.New("luci: route pattern must begin with /")
-	}
-
 	var (
 		valIndex int
 		varCount int
