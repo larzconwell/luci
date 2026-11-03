@@ -167,3 +167,20 @@ func TestRoutePath(t *testing.T) {
 		assert.Equal(t, test.expectedPath, path, idx)
 	}
 }
+
+func TestRouteMustPath(t *testing.T) {
+	t.Parallel()
+
+	route := Route{Pattern: `/search/date/{date:\d\d\d\d-\d\d-\d\d}`}
+
+	path := route.MustPath("2026-10-31")
+	assert.Equal(t, "/search/date/2026-10-31", path)
+
+	assert.PanicsWithError(t, "luci: must provide the expected number of values (expected 1 received 0)", func() {
+		route.MustPath()
+	})
+
+	assert.PanicsWithError(t, `luci: value for variable "date" does not match regex`, func() {
+		route.MustPath("abcd-ef-gh")
+	})
+}

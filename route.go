@@ -53,10 +53,11 @@ func (route Route) String() string {
 	return fmt.Sprintf("%s %s %s", route.Name, route.Method, route.Pattern)
 }
 
-// Path builds a path from the routes pattern using the given variable values.
+// Path builds a path from the routes pattern using the given values in the order
+// defined by the routes pattern.
 //
-// Values must be in the order defined by the routes pattern, and are validated
-// against the associated regex matcher if one exists.
+// The number of values must match the number of variables in the pattern exactly,
+// and the values are evaluated against the the variables regex matcher if one exists.
 func (route Route) Path(vals ...string) (string, error) {
 	var (
 		valIndex int
@@ -149,4 +150,17 @@ func (route Route) Path(vals ...string) (string, error) {
 	}
 
 	return builder.String(), nil
+}
+
+// MustPath builds a a path from the routes pattern using the given variable values.
+//
+// MustPath panics if the given values don't align with the routes pattern, see
+// [Route.Path] for details.
+func (route Route) MustPath(vals ...string) string {
+	path, err := route.Path(vals...)
+	if err != nil {
+		panic(err)
+	}
+
+	return path
 }
